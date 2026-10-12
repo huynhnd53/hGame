@@ -19,7 +19,7 @@ const SODIUM = new THREE.Color(1.0, 0.62, 0.3);
 /** Asset proportions (metres) and where each cut-out touches the ground. */
 const LAMP = { height: 8, width: 8 * (220 / 431), anchorX: 0.073, headU: 0.9, headV: 0.96 };
 const TRAFFIC = { height: 4.6, width: 4.6 * (111 / 360), anchorX: 0.392 };
-const BENCH = { width: 1.9, height: 1.9 * (266 / 419) };
+const BENCH = { width: 1.9, height: 1.9 / 1.471 };
 const PLANTER = { width: 2.2, height: 2.2 * (202 / 416) };
 const CONE = { height: 0.75, width: 0.75 * (227 / 313) };
 
@@ -138,7 +138,7 @@ export function buildNightCity(city: City, assetBase: string): NightCity {
   }
   for (const p of parkLamps) lights.push({ pos: p.clone().setY(5.5), color: SODIUM, strength: 2.4, radius: 4.5 });
 
-  const atlas = buildFacadeAtlas();
+  const atlas = buildFacadeAtlas(`${assetBase}props/`);
   const signs = buildSignAtlas();
   const lots = [...city.blocks.flatMap((b) => b.lots), ...city.outerLots];
   const houses = buildHouses(lots, atlas, signs.count);
@@ -234,7 +234,9 @@ export function buildNightCity(city: City, assetBase: string): NightCity {
   group.add(new THREE.Mesh(bakeLight(houses.facades, grid, 0.5), basic({ map: atlas.map, color: wallTone })));
   group.add(new THREE.Mesh(bakeLight(houses.trim, grid, 0.5), basic({ map: atlas.map, color: wallTone })));
   group.add(new THREE.Mesh(bakeLight(houses.railings, grid), basic({ map: S.railing(), alphaTest: 0.5, side: THREE.DoubleSide })));
-  group.add(new THREE.Mesh(bakeLight(houses.awnings, grid), basic({ map: S.awnings(), side: THREE.DoubleSide })));
+  const awningTex = loadTexture(`${assetBase}props/awnings.webp`);
+  awningTex.wrapS = THREE.RepeatWrapping;
+  group.add(new THREE.Mesh(bakeLight(houses.awnings, grid), basic({ map: awningTex, alphaTest: 0.5, side: THREE.DoubleSide })));
   group.add(new THREE.Mesh(houses.signs, new THREE.MeshBasicMaterial({ map: signs.map, color: new THREE.Color(0.85, 0.85, 0.85) })));
   group.add(
     new THREE.Mesh(
@@ -252,7 +254,41 @@ export function buildNightCity(city: City, assetBase: string): NightCity {
     ),
   );
 
+  // Street-light level at a point, for the cut-out photos that are not baked per vertex.
+  const lightAt = (p: THREE.Vector3) => {
+    const c = grid.shade(p.clone().setY(p.y + 1), UP, new THREE.Color());
+    const lum = AMBIENT.g + c.g * 0.6 + c.r * 0.4;
+    return THREE.MathUtils.clamp(0.25 + lum * 0.7, 0.3, 1.25);
+  };
+
   // ---- Landmarks (kept simple) ----------------------------------------------------------------
+  // Low railings round the parks and the lake, with a gap in the middle of each side to walk in.
+  const fences = new QuadBuilder();
+  const FENCE_W = 2.4;
+  const FENCE_H = 1.15;
+  for (const b of city.blocks) {
+    if (b.kind !== 'park' && b.kind !== 'lake') continue;
+    const i = b.inner;
+    const sides: [THREE.Vector3, THREE.Vector3][] = [
+      [new THREE.Vector3(i.x - i.w / 2, CURB_H, i.z - i.d / 2), new THREE.Vector3(1, 0, 0)],
+      [new THREE.Vector3(i.x + i.w / 2, CURB_H, i.z - i.d / 2), new THREE.Vector3(0, 0, 1)],
+      [new THREE.Vector3(i.x + i.w / 2, CURB_H, i.z + i.d / 2), new THREE.Vector3(-1, 0, 0)],
+      [new THREE.Vector3(i.x - i.w / 2, CURB_H, i.z + i.d / 2), new THREE.Vector3(0, 0, -1)],
+    ];
+    for (const [corner, dir] of sides) {
+      const len = i.w;
+      const panels = Math.floor(len / FENCE_W);
+      for (let k = 0; k < panels; k++) {
+        const mid = (k + 0.5) * FENCE_W;
+        if (Math.abs(mid - len / 2) < FENCE_W) continue;
+        const o = corner.clone().addScaledVector(dir, k * FENCE_W);
+        const shade = lightAt(o.clone().setY(1)) * 0.8;
+        fences.quad(o, dir.clone().multiplyScalar(FENCE_W), new THREE.Vector3(0, FENCE_H, 0), new THREE.Vector3(-dir.z, 0, dir.x), [0, 0, 1, 1], new THREE.Color().setScalar(shade));
+      }
+    }
+  }
+  group.add(new THREE.Mesh(fences.build(), basic({ map: loadTexture(`${assetBase}props/fence.webp`), alphaTest: 0.5, side: THREE.DoubleSide })));
+
   for (const b of city.blocks) {
     if (b.kind === 'houses') continue;
     const i = b.inner;
@@ -281,11 +317,6 @@ export function buildNightCity(city: City, assetBase: string): NightCity {
   }
 
   // ---- Cut-out street furniture from the photo assets ----------------------------------------
-  const lightAt = (p: THREE.Vector3) => {
-    const c = grid.shade(p.clone().setY(p.y + 1), UP, new THREE.Color());
-    const lum = AMBIENT.g + c.g * 0.6 + c.r * 0.4;
-    return THREE.MathUtils.clamp(0.25 + lum * 0.7, 0.3, 1.25);
-  };
 
   const lampTex = loadTexture(`${assetBase}lamp.png`);
   group.add(
@@ -362,7 +393,7 @@ export function buildNightCity(city: City, assetBase: string): NightCity {
     }
   }
   group.add(billboards(loadTexture(`${assetBase}planter.png`), planters, { ...PLANTER, anchorX: 0.5, brightness: 0.8 }));
-  group.add(billboards(loadTexture(`${assetBase}bench.png`), benches, { ...BENCH, anchorX: 0.5, brightness: 0.8 }));
+  group.add(billboards(loadTexture(`${assetBase}props/concrete-bench.webp`), benches, { ...BENCH, anchorX: 0.5, brightness: 0.8 }));
 
   // A few clusters of traffic cones on sidewalk corners.
   const cones: BillboardItem[] = [];

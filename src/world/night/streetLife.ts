@@ -224,6 +224,29 @@ export function buildStreetLife(
       quad(`signback:${text}`, tip, f.n.clone().multiplyScalar(-w), UP.clone().multiplyScalar(h), light);
     }
     if (rand() < 0.3) put('water-tank', at(f, 1 + rand() * (f.width - 2), -1.4, CURB_H + lot.height));
+    if (!shop && rand() < 0.15) {
+      // Grey electricity meter boxes on the wall beside the door.
+      const w = 0.95;
+      const o = at(f, rand() < 0.5 ? 0.15 : f.width - 0.15 - w, 0.08, CURB_H + 0.9);
+      quad('utility-boxes', o, f.right.clone().multiplyScalar(w), UP.clone().multiplyScalar(w / 1.199), lightAt(o) * 0.85);
+    }
+  }
+
+  // ---- Drain grates in the gutter along every curb ---------------------------------------------
+  for (const r of city.roads) {
+    for (const side of [-1, 1]) {
+      for (const t of alongRoad(city, 22, side < 0 ? 4 : 15, 1)) {
+        for (const axis of ['x', 'z'] as const) {
+          const across = r + side * (ROAD / 2 - 0.45);
+          // Lying flat: 0.5 m along the curb, 0.66 m across.
+          const along = axis === 'x' ? new THREE.Vector3(0, 0, 0.5) : new THREE.Vector3(0.5, 0, 0);
+          const out = axis === 'x' ? new THREE.Vector3(0.66 * side, 0, 0) : new THREE.Vector3(0, 0, 0.66 * side);
+          const c = axis === 'x' ? new THREE.Vector3(across, 0.012, t) : new THREE.Vector3(t, 0.012, across);
+          const o = c.clone().addScaledVector(along, -0.5).addScaledVector(out, -0.5);
+          quad('drain-grate', o, along, out, lightAt(c) * 0.7);
+        }
+      }
+    }
   }
 
   // ---- Street trees on the planter line, between the planters and clear of lamps and poles -------
@@ -283,7 +306,7 @@ export function buildStreetLife(
       kind === 'sign' || kind === 'signback'
         ? signTexture(url('round-sign'), text, kind === 'signback')
         : loadTexture(url(key === 'wires' ? 'overhead-wires' : key));
-    const doubleSided = key === 'flag' || key === 'wires';
+    const doubleSided = key === 'flag' || key === 'wires' || key === 'drain-grate';
     group.add(
       new THREE.Mesh(
         b.build(),

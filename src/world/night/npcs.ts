@@ -6,7 +6,19 @@ import { radialTexture } from './proc';
 
 const CURB_H = 0.16;
 const CAR_PAINT = [0x8b1e1e, 0xd8d8d2, 0x1f3b66, 0x2a2a2c, 0x6d6f73, 0x8a6a2c, 0x274d3a, 0xb8b0a0];
-const BIKE_PAINT = [0xb3261e, 0x1d4f91, 0xe8e6df, 0x202022, 0x6d6f73, 0x2f6f3a, 0xa1781a, 0x7a1414];
+/**
+ * NPC motorbikes wear side-on photos on both flanks (front towards the direction of travel) with a seated rider
+ * photo above the seat; the box underneath only shows from front and back, painted to match the photo.
+ */
+const BIKE_PHOTOS = [
+  { name: 'bike-white', aspect: 1.542, facesRight: false, paint: 0xe2e0d8 },
+  { name: 'bike-mint', aspect: 1.407, facesRight: false, paint: 0x9cc9c0 },
+  { name: 'bike-red', aspect: 1.459, facesRight: true, paint: 0xb3261e },
+  { name: 'bike-white-modern', aspect: 1.533, facesRight: true, paint: 0xd6d6d4 },
+  { name: 'bike-dark-blue', aspect: 1.484, facesRight: false, paint: 0x1d2f6a },
+];
+const BIKE_PAINT = BIKE_PHOTOS.map((b) => b.paint);
+const BIKE_LENGTH = 1.9;
 /**
  * People on the sidewalks are photo cut-outs: image proportions, height in metres, and whether the person in
  * the photo faces the image's right side (so they can be mirrored to face where they walk).
@@ -43,13 +55,37 @@ function carBody() {
 }
 
 function bikeBody() {
+  // Kept inside the photo flanks (±0.17 m) so from the side only the photos show.
   return mergeGeometries([
-    box(0.32, 0.5, 1.75, 0, 0.45, 0),
-    box(0.5, 0.25, 0.7, 0, 0.75, 0.35, 0x161616), // seat
-    box(0.2, 0.55, 0.2, 0, 0.32, -0.75, 0x161616), // front fork
-    box(0.4, 0.62, 0.3, 0, 1.15, 0.3, 0x2b3440), // rider torso
-    box(0.26, 0.26, 0.28, 0, 1.6, 0.25, 0xd8d8d8), // helmet
+    box(0.26, 0.5, 1.7, 0, 0.45, 0),
+    box(0.3, 0.2, 0.7, 0, 0.75, 0.35, 0x161616), // seat
+    box(0.18, 0.55, 0.18, 0, 0.32, -0.75, 0x161616), // front fork
+    box(0.36, 0.6, 0.28, 0, 1.15, 0.22, 0x23293a), // rider's back, the same navy shirt as the photo
+    box(0.2, 0.22, 0.22, 0, 1.46, 0.18, 0x151515), // head
   ]);
+}
+
+/** Two upright quads on the flanks at ±halfWidth, showing a side-on photo with its front towards −z. */
+function flanks(length: number, height: number, halfWidth: number, y0: number, zCenter: number, facesRight: boolean) {
+  const zf = zCenter - length / 2;
+  const zb = zCenter + length / 2;
+  const uf = facesRight ? 1 : 0;
+  const ub = 1 - uf;
+  const pos: number[] = [];
+  const uv: number[] = [];
+  const index: number[] = [];
+  for (const side of [-1, 1]) {
+    const x = side * halfWidth;
+    const base = pos.length / 3;
+    pos.push(x, y0, zf, x, y0, zb, x, y0 + height, zb, x, y0 + height, zf);
+    uv.push(uf, 0, ub, 0, ub, 1, uf, 1);
+    index.push(base, base + 1, base + 2, base, base + 2, base + 3);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(index);
+  return g;
 }
 
 /** Head- and tail-lamps as small bright boxes; unlit so they read at night. */
@@ -77,6 +113,8 @@ export class NpcView {
   readonly group = new THREE.Group();
   private cars: Group<Vehicle>;
   private bikes: Group<Vehicle>;
+  /** Photo layers over the NPC bikes: one per bike photo, plus the riders. */
+  private photoLayers: { mesh: THREE.InstancedMesh; items: Vehicle[] }[] = [];
   /** One instanced cut-out per kind of person, positions rewritten every frame. */
   private walkers: { mesh: THREE.Mesh; people: Pedestrian[]; facesRight: boolean }[];
   private glow: THREE.Points;
@@ -117,6 +155,28 @@ export class NpcView {
     const vs = traffic.vehicles;
     this.cars = make(vs.filter((v) => v.kind === 'car'), carBody(), CAR_PAINT, lamps('car'));
     this.bikes = make(vs.filter((v) => v.kind === 'bike'), bikeBody(), BIKE_PAINT, lamps('bike'));
+    const layer = (geo: THREE.BufferGeometry, name: string, items: Vehicle[]) => {
+      const n = Math.max(1, items.length);
+      const mesh = new THREE.InstancedMesh(
+        geo,
+        new THREE.MeshBasicMaterial({ map: loadTexture(`${assetBase}props/${name}.webp`), alphaTest: 0.5, side: THREE.DoubleSide }),
+        n,
+      );
+      mesh.count = items.length;
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(n * 3).fill(1), 3);
+      mesh.frustumCulled = false;
+      this.group.add(mesh);
+      this.photoLayers.push({ mesh, items });
+    };
+    BIKE_PHOTOS.forEach((p, k) =>
+      layer(
+        flanks(BIKE_LENGTH, BIKE_LENGTH / p.aspect, 0.17, 0.02, 0, p.facesRight),
+        p.name,
+        this.bikes.items.filter((b) => b.paint % BIKE_PHOTOS.length === k),
+      ),
+    );
+    layer(flanks(0.65, 1.3, 0.21, 0.25, 0.12, true), 'seated-man', this.bikes.items);
     this.walkers = WALKERS.map((w, k) => {
       const people = traffic.pedestrians.filter((_, i) => i % WALKERS.length === k);
       const mesh = billboards(
@@ -163,6 +223,13 @@ export class NpcView {
     };
     tint(this.cars);
     tint(this.bikes);
+    for (const l of this.photoLayers) {
+      l.items.forEach((it, i) => {
+        this.c.setScalar(0.22 + Math.min(1, this.levelAt(it.x, it.z)) * 0.8);
+        l.mesh.setColorAt(i, this.c);
+      });
+      l.mesh.instanceColor!.needsUpdate = true;
+    }
     for (const w of this.walkers) {
       const light = w.mesh.geometry.getAttribute('aLight') as THREE.BufferAttribute;
       w.people.forEach((p, i) => light.setX(i, 0.25 + Math.min(1, this.levelAt(p.x, p.z)) * 0.85));
@@ -185,6 +252,15 @@ export class NpcView {
     const onSidewalk = (it: object) => 'loop' in it;
     place(this.cars);
     place(this.bikes);
+    for (const l of this.photoLayers) {
+      l.items.forEach((it, i) => {
+        this.q.setFromAxisAngle(this.up, it.heading);
+        this.p.set(it.x, 0, it.z);
+        this.m.compose(this.p, this.q, this.one);
+        l.mesh.setMatrixAt(i, this.m);
+      });
+      l.mesh.instanceMatrix.needsUpdate = true;
+    }
     for (const w of this.walkers) {
       const pos = w.mesh.geometry.getAttribute('aPos') as THREE.BufferAttribute;
       const out = w.mesh.geometry.getAttribute('aOut') as THREE.BufferAttribute;

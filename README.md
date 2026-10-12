@@ -11,6 +11,9 @@ Bản chơi: https://huynhnd53.github.io/vgang-online/
 - Không giới hạn tốc độ: giữ ga là xe tiếp tục tăng tốc (đồng hồ chia tới 200 km/h).
 - Khu phố 10×10 ô (khoảng 600 m mỗi chiều) với hồ, công viên, quảng trường; có xe máy, ô tô chạy theo làn,
   rẽ ở ngã tư, dừng khi bị chắn, và người đi bộ trên vỉa hè. Đâm vào xe hay người đều bị chặn lại.
+- Phố có hơi thở đời thường: quán vỉa hè ghế nhựa, xe đẩy, quầy hàng, kệ snack, xe máy đỗ trước nhà, chậu cây,
+  cây xanh, cột điện với dây điện vắt ngang đường, cục nóng điều hòa, cờ đỏ sao vàng, biển vẫy (CÀ PHÊ, TRÀ ĐÁ…)
+  và bồn nước inox trên mái. Người đi bộ là ảnh người thật, quay mặt theo hướng đi.
 - Có thể phi lên vỉa hè (xe nảy nhẹ khi qua bó vỉa); cột đèn, bồn cây, ghế đá, cọc giao thông và mặt tiền nhà vẫn chặn xe.
 - Mỗi xe có tiếng bô riêng: tay ga êm hoặc trầm, tay ga thể thao khàn, côn tay có sang số và nổ pô khi nhả ga,
   xe số "tạch tạch". Bấm vào xe ở màn chọn xe để nghe thử.
@@ -41,7 +44,8 @@ Cấu trúc:
 
 - `src/sim/wheelie.ts` — vật lý bốc đầu (góc nâng, điểm cân bằng, lật xe).
 - `src/sim/traffic.ts` — NPC: xe chạy theo làn bên phải, rẽ ở ngã tư, giữ khoảng cách và dừng trước người chơi; người đi bộ vòng quanh vỉa hè.
-- `src/world/night/npcs.ts` — vẽ NPC bằng các khối hộp (instancing), có đèn pha, đèn hậu.
+- `src/world/night/npcs.ts` — vẽ xe NPC bằng các khối hộp (instancing), có đèn pha, đèn hậu; người đi bộ là ảnh cắt.
+- `src/world/night/streetLife.ts` — đặt đồ vật đời thường trước từng căn nhà, cây, cột điện, đồ gắn tường và mái.
 - `src/world/night/rider.ts` — xe và người lái của mình cho góc nhìn thứ 3 (khối hộp, màu theo xe).
 - `src/sim/` — logic thuần: vật lý xe máy, bố cục khu phố (sinh ngẫu nhiên có seed cố định, gồm loại tầng trệt,
   cửa sổ từng tầng, mái hiên, biển hiệu). Có test trong `tests/`.
@@ -70,6 +74,10 @@ Game tự giảm độ phân giải khi khung hình tụt.
 - Đồ đường phố: `public/assets/lamp.png`, `traffic-light.png`, `bench.png`, `planter.png`, `cone.png` (PNG nền
   trong suốt, đã cắt sát vật). Kích thước ngoài đời và điểm chạm đất của từng ảnh nằm ở đầu
   `src/world/night/simpleCity.ts` (`LAMP`, `TRAFFIC`, `BENCH`, `PLANTER`, `CONE`).
+- Đồ đời thường và người đi bộ: `public/assets/props/*.webp`, đã cắt sát vật, thu nhỏ (cạnh dài 512 px, cây/cột
+  768 px) và nén WebP từ bộ ảnh gốc trong `asset-src/moi/`. Chiều cao ngoài đời của từng món nằm trong `PROPS`
+  (`streetLife.ts`) và `WALKERS` (`npcs.ts`).
+- `asset-src/` là ảnh gốc để làm việc, không được đăng lên GitHub Pages (chỉ thư mục `public/` được đăng).
 
 ## Phát hành
 

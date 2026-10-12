@@ -1,0 +1,222 @@
+[
+  {
+    "batch": 1,
+    "file": "batch-01/reconstructed-png/food-cart.png"
+  },
+  {
+    "batch": 1,
+    "file": "batch-01/reconstructed-png/blue-stool.png"
+  },
+  {
+    "batch": 1,
+    "file": "batch-01/reconstructed-png/white-motorbike.png"
+  },
+  {
+    "batch": 1,
+    "file": "batch-01/reconstructed-png/utility-boxes.png"
+  },
+  {
+    "batch": 2,
+    "file": "batch-02/reconstructed-png/mint-scooter.png"
+  },
+  {
+    "batch": 2,
+    "file": "batch-02/reconstructed-png/pho-sign-awning.png"
+  },
+  {
+    "batch": 2,
+    "file": "batch-02/reconstructed-png/rooftop-water-tank.png"
+  },
+  {
+    "batch": 2,
+    "file": "batch-02/reconstructed-png/snack-display-rack.png"
+  },
+  {
+    "batch": 3,
+    "file": "batch-03/reconstructed-png/aircon-outdoor.png"
+  },
+  {
+    "batch": 3,
+    "file": "batch-03/reconstructed-png/metal-chair.png"
+  },
+  {
+    "batch": 3,
+    "file": "batch-03/reconstructed-png/red-motorbike.png"
+  },
+  {
+    "batch": 3,
+    "file": "batch-03/reconstructed-png/concrete-bench.png"
+  },
+  {
+    "batch": 4,
+    "file": "batch-04/reconstructed-png/folding-metal-gate.png"
+  },
+  {
+    "batch": 4,
+    "file": "batch-04/reconstructed-png/white-modern-scooter.png"
+  },
+  {
+    "batch": 4,
+    "file": "batch-04/reconstructed-png/blue-grey-car.png"
+  },
+  {
+    "batch": 4,
+    "file": "batch-04/reconstructed-png/metal-drying-frame.png"
+  },
+  {
+    "batch": 5,
+    "file": "batch-05/reconstructed-png/blue-water-jug.png"
+  },
+  {
+    "batch": 5,
+    "file": "batch-05/reconstructed-png/low-table.png"
+  },
+  {
+    "batch": 5,
+    "file": "batch-05/reconstructed-png/red-plastic-stool.png"
+  },
+  {
+    "batch": 6,
+    "file": "batch-06/reconstructed-png/drain-grate.png"
+  },
+  {
+    "batch": 6,
+    "file": "batch-06/reconstructed-png/green-vendor-counter.png"
+  },
+  {
+    "batch": 6,
+    "file": "batch-06/reconstructed-png/olive-backpack.png"
+  },
+  {
+    "batch": 7,
+    "file": "batch-07/reconstructed-png/orange-white-helmet.png"
+  },
+  {
+    "batch": 7,
+    "file": "batch-07/reconstructed-png/round-wall-sign.png"
+  },
+  {
+    "batch": 7,
+    "file": "batch-07/reconstructed-png/small-potted-plant.png"
+  },
+  {
+    "batch": 7,
+    "file": "batch-07/reconstructed-png/standing-food-sign.png"
+  },
+  {
+    "batch": 7,
+    "file": "batch-07/reconstructed-png/vietnam-flag.png"
+  },
+  {
+    "batch": 8,
+    "file": "batch-08/reconstructed-png/balcony-cage.png"
+  },
+  {
+    "batch": 8,
+    "file": "batch-08/reconstructed-png/curb-segment.png"
+  },
+  {
+    "batch": 8,
+    "file": "batch-08/reconstructed-png/female-pedestrian.png"
+  },
+  {
+    "batch": 8,
+    "file": "batch-08/reconstructed-png/green-metal-awning.png"
+  },
+  {
+    "batch": 8,
+    "file": "batch-08/reconstructed-png/green-storefront.png"
+  },
+  {
+    "batch": 8,
+    "file": "batch-08/reconstructed-png/male-pedestrian.png"
+  },
+  {
+    "batch": 8,
+    "file": "batch-08/reconstructed-png/metal-fence-panel.png"
+  },
+  {
+    "batch": 8,
+    "file": "batch-08/reconstructed-png/overhead-wires.png"
+  },
+  {
+    "batch": 8,
+    "file": "batch-08/reconstructed-png/shop-window.png"
+  },
+  {
+    "batch": 8,
+    "file": "batch-08/reconstructed-png/street-tree.png"
+  },
+  {
+    "batch": 8,
+    "file": "batch-08/reconstructed-png/townhouse-facade.png"
+  },
+  {
+    "batch": 8,
+    "file": "batch-08/reconstructed-png/utility-pole.png"
+  },
+  {
+    "batch": 8,
+    "file": "batch-08/textures/asphalt-texture.png"
+  },
+  {
+    "batch": 8,
+    "file": "batch-08/textures/sidewalk-texture.png"
+  },
+  {
+    "batch": 9,
+    "file": "batch-09/reconstructed-png/black-cafe-chair.png"
+  },
+  {
+    "batch": 9,
+    "file": "batch-09/reconstructed-png/brown-double-door.png"
+  },
+  {
+    "batch": 9,
+    "file": "batch-09/reconstructed-png/dark-blue-scooter.png"
+  },
+  {
+    "batch": 9,
+    "file": "batch-09/reconstructed-png/hanging-plant.png"
+  },
+  {
+    "batch": 9,
+    "file": "batch-09/reconstructed-png/long-planter.png"
+  },
+  {
+    "batch": 9,
+    "file": "batch-09/reconstructed-png/main-character.png"
+  },
+  {
+    "batch": 9,
+    "file": "batch-09/reconstructed-png/red-white-awning.png"
+  },
+  {
+    "batch": 9,
+    "file": "batch-09/reconstructed-png/small-cafe-table.png"
+  },
+  {
+    "batch": 10,
+    "file": "batch-10/reconstructed-png/green-shirt-man.png"
+  },
+  {
+    "batch": 10,
+    "file": "batch-10/reconstructed-png/orange-shirt-man.png"
+  },
+  {
+    "batch": 10,
+    "file": "batch-10/reconstructed-png/pink-jacket-woman.png"
+  },
+  {
+    "batch": 10,
+    "file": "batch-10/reconstructed-png/seated-man.png"
+  },
+  {
+    "batch": 10,
+    "file": "batch-10/reconstructed-png/vendor-upper-body.png"
+  },
+  {
+    "batch": 10,
+    "file": "batch-10/reconstructed-png/yellow-blue-child.png"
+  }
+]

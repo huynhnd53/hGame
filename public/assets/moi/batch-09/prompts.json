@@ -1,0 +1,42 @@
+[
+  {
+    "name": "black-cafe-chair",
+    "frame": "10",
+    "prompt": "Use case: background-extraction. Asset type: conservative reconstructed transparent reference PNG for a Three.js city game. Input image is a game video frame. Isolate exactly the specified object, keep source proportions, viewing angle, muted colors and simple game-render materials. Actual transparent alpha outside silhouette and through empty gaps. No scene, ground, ground shadow, glow, adjacent props, watermark, caption, text, collage or logo. Reconstruct occluded parts minimally; avoid photorealistic detail, excessive wear and decorative upgrades. Subject: one small black cafe chair with backrest across street at x842..887 y279..340, in front of teal folding gate. Simple dark metal frame, flat dark seat and rectangular backrest, four slender legs. Source three-quarter view. No table, other chairs or seated person."
+  },
+  {
+    "name": "small-cafe-table",
+    "frame": "10",
+    "prompt": "Use case: background-extraction. Asset type: conservative reconstructed transparent reference PNG for a Three.js city game. Input image is a game video frame. Isolate exactly the specified object, keep source proportions, viewing angle, muted colors and simple game-render materials. Actual transparent alpha outside silhouette and through empty gaps. No scene, ground, ground shadow, glow, adjacent props, watermark, caption, text, collage or logo. Reconstruct occluded parts minimally; avoid photorealistic detail, excessive wear and decorative upgrades. Subject: the small cafe table between black chairs across street at x865..928 y307..340. Preserve modest dark flat tabletop on thin metal supports, roughly rectangular/slightly rounded shape as visible. Keep ordinary compact cafe proportions, source oblique view. No cups, chairs, people, gate or fancy pedestal. Supports hidden in source may be reconstructed simply."
+  },
+  {
+    "name": "long-planter",
+    "frame": "14",
+    "prompt": "Use case: background-extraction. Asset type: conservative reconstructed transparent reference PNG for a Three.js city game. Input image is a game video frame. Isolate exactly the specified object, keep source proportions, viewing angle, muted colors and simple game-render materials. Actual transparent alpha outside silhouette and through empty gaps. No scene, ground, ground shadow, glow, adjacent props, watermark, caption, text, collage or logo. Reconstruct occluded parts minimally; avoid photorealistic detail, excessive wear and decorative upgrades. Subject: low long rectangular planter with compact green foliage in front of right shop at x1005..1130 y286..350. One simple rectangular earth-toned trough with plain low sides, small green plants in a row. Preserve low broad proportions; remove surrounding pots, bench, storefront, tree and people. Reconstruct hidden trough ends minimally. No flowers or lush new species."
+  },
+  {
+    "name": "hanging-plant",
+    "frame": "13",
+    "prompt": "Use case: background-extraction. Asset type: conservative reconstructed transparent reference PNG for a Three.js city game. Input image is a game video frame. Isolate exactly the specified object, keep source proportions, viewing angle, muted colors and simple game-render materials. Actual transparent alpha outside silhouette and through empty gaps. No scene, ground, ground shadow, glow, adjacent props, watermark, caption, text, collage or logo. Reconstruct occluded parts minimally; avoid photorealistic detail, excessive wear and decorative upgrades. Subject: the modest trailing green plant hanging below left edge of green shop sign on right around x963..1018 y185..257. Isolate one compact cascade of small green leaves with minimum simple dark container and short hanging attachment only if needed for coherent object. Pot and support are mostly occluded and should be plain, not elaborate. Preserve sparse source foliage, not lush ornamental hanging basket. No sign, wall, tree or other greenery."
+  },
+  {
+    "name": "brown-double-door",
+    "frame": "14",
+    "prompt": "Use case: background-extraction. Asset type: conservative reconstructed transparent reference PNG for a Three.js city game. Input image is a game video frame. Isolate exactly the specified object, keep source proportions, viewing angle, muted colors and simple game-render materials. Actual transparent alpha outside silhouette and through empty gaps. No scene, ground, ground shadow, glow, adjacent props, watermark, caption, text, collage or logo. Reconstruct occluded parts minimally; avoid photorealistic detail, excessive wear and decorative upgrades. Subject: the brown-red double wooden entrance door at far left around x20..163 y190..437, in teal door surround. Isolate ONLY the two closed door leaves and plain slim matching frame, near frontal view. Tall rectangular flat paneled doors, subdued brown-red finish, modest simple handle, no ornate carving, decorative hardware, wall, doorstep or foliage."
+  },
+  {
+    "name": "red-white-awning",
+    "frame": "00",
+    "prompt": "Use case: background-extraction. Asset type: conservative reconstructed transparent reference PNG for a Three.js city game. Input image is a game video frame. Isolate exactly the specified object, keep source proportions, viewing angle, muted colors and simple game-render materials. Actual transparent alpha outside silhouette and through empty gaps. No scene, ground, ground shadow, glow, adjacent props, watermark, caption, text, collage or logo. Reconstruct occluded parts minimally; avoid photorealistic detail, excessive wear and decorative upgrades. Subject: the partial red-white striped shop awning at far left x0..175 y165..220. Reconstruct one complete modest rectangular sloping fabric awning module using same alternating muted red and off-white broad stripes and short vertical valance. Source slight oblique view, simple narrow supports underneath. No storefront, signs, tree or people. Missing width is approximate; no luxurious curves or fancy ornament."
+  },
+  {
+    "name": "dark-blue-scooter",
+    "frame": "14",
+    "prompt": "Use case: background-extraction. Asset type: conservative reconstructed transparent reference PNG for a Three.js city game. Input image is a game video frame. Isolate exactly the specified object, keep source proportions, viewing angle, muted colors and simple game-render materials. Actual transparent alpha outside silhouette and through empty gaps. No scene, ground, ground shadow, glow, adjacent props, watermark, caption, text, collage or logo. Reconstruct occluded parts minimally; avoid photorealistic detail, excessive wear and decorative upgrades. Subject: parked dark navy blue scooter along left curb around x198..414 y311..413, partially hidden by utility pole. One whole scooter, front wheel left, rear right, side three-quarter view as in frame. Simple navy body, black seat, pale grey lower panels and rims, modest exhaust and mirrors. Reconstruct covered center minimally. No rider, street, other motorbikes, brand text or readable plate."
+  },
+  {
+    "name": "main-character",
+    "frame": "00",
+    "prompt": "Use case: background-extraction. Asset type: conservative reconstructed transparent reference PNG for a Three.js city game. Input image is a game video frame. Isolate exactly the specified object, keep source proportions, viewing angle, muted colors and simple game-render materials. Actual transparent alpha outside silhouette and through empty gaps. No scene, ground, ground shadow, glow, adjacent props, watermark, caption, text, collage or logo. Reconstruct occluded parts minimally; avoid photorealistic detail, excessive wear and decorative upgrades. Subject: the main male game character in foreground at x532..615 y317..665. Full body, short dark hair, off-white short-sleeve button shirt, dark straight trousers, dark low sneakers with white soles, olive-grey backpack with yellow small charm. Preserve source standing side/back three-quarter view facing right and arms naturally lowered. Minimal facial detail, ordinary game style. Isolate complete character and backpack, no cast ground shadow, props or other people."
+  }
+]

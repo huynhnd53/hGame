@@ -1,0 +1,74 @@
+[
+  {
+    "name": "seated-man",
+    "label": "Người ngồi ghế",
+    "file": "reconstructed-png/seated-man.png",
+    "pose": "seated",
+    "source_time_seconds": "14",
+    "width": 1317,
+    "height": 1194,
+    "static": true,
+    "is_3d_model": false,
+    "animated": false
+  },
+  {
+    "name": "vendor-upper-body",
+    "label": "Người bán hàng — thân trên",
+    "file": "reconstructed-png/vendor-upper-body.png",
+    "pose": "upper-body",
+    "source_time_seconds": "10",
+    "width": 1275,
+    "height": 1233,
+    "static": true,
+    "is_3d_model": false,
+    "animated": false
+  },
+  {
+    "name": "green-shirt-man",
+    "label": "Người áo xanh lá",
+    "file": "reconstructed-png/green-shirt-man.png",
+    "pose": "standing",
+    "source_time_seconds": "07.5",
+    "width": 1024,
+    "height": 1536,
+    "static": true,
+    "is_3d_model": false,
+    "animated": false
+  },
+  {
+    "name": "orange-shirt-man",
+    "label": "Người áo cam",
+    "file": "reconstructed-png/orange-shirt-man.png",
+    "pose": "standing",
+    "source_time_seconds": "06.5",
+    "width": 1024,
+    "height": 1536,
+    "static": true,
+    "is_3d_model": false,
+    "animated": false
+  },
+  {
+    "name": "pink-jacket-woman",
+    "label": "Phụ nữ áo hồng",
+    "file": "reconstructed-png/pink-jacket-woman.png",
+    "pose": "standing",
+    "source_time_seconds": "07.5",
+    "width": 1024,
+    "height": 1536,
+    "static": true,
+    "is_3d_model": false,
+    "animated": false
+  },
+  {
+    "name": "yellow-blue-child",
+    "label": "Trẻ áo vàng–xanh",
+    "file": "reconstructed-png/yellow-blue-child.png",
+    "pose": "walking",
+    "source_time_seconds": "12.3",
+    "width": 1024,
+    "height": 1536,
+    "static": true,
+    "is_3d_model": false,
+    "animated": false
+  }
+]

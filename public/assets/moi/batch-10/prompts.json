@@ -1,0 +1,44 @@
+[
+  {
+    "name": "seated-man",
+    "frame": "14",
+    "pose": "seated",
+    "prompt": "Use case: background-extraction. Asset type: static transparent NPC reference sprite for a Three.js Hanoi street game. Input image is the exact reference video frame. Conservatively reconstruct ONLY the specified character, preserving source clothing, color blocks, body proportions, pose and viewing direction. Restrained simple game-render shading and materials, low-detail ordinary face based only on visible silhouette; do not invent identity or beautify features. Actual transparent alpha outside silhouette and between arms/legs. No scenery, ground, shadow on ground, glow, vehicle, furniture, other people, watermark, text, logos or collage. Do not change outfit or add accessories. Subject: adult male NPC sitting on the concrete bench at right around x750..819 y285..393. Dark navy short-sleeved shirt, dark trousers, short dark hair, simple shoes. Full body in side three-quarter view facing right, hips seated, knees bent, feet down, hands relaxed by lap. Remove bench completely but keep sitting pose; reconstruct hidden legs minimally. No standing pose.",
+    "label": "Người ngồi ghế"
+  },
+  {
+    "name": "vendor-upper-body",
+    "frame": "10",
+    "pose": "upper-body",
+    "prompt": "Use case: background-extraction. Asset type: static transparent NPC reference sprite for a Three.js Hanoi street game. Input image is the exact reference video frame. Conservatively reconstruct ONLY the specified character, preserving source clothing, color blocks, body proportions, pose and viewing direction. Restrained simple game-render shading and materials, low-detail ordinary face based only on visible silhouette; do not invent identity or beautify features. Actual transparent alpha outside silhouette and between arms/legs. No scenery, ground, shadow on ground, glow, vehicle, furniture, other people, watermark, text, logos or collage. Do not change outfit or add accessories. Subject: vendor behind mint-green counter across street at x689..714 y254..307. Adult male, short dark hair, pale light-blue/off-white short-sleeved shirt, neutral posture with forearms forward at counter height. Reproduce ONLY visible upper body from head to waist, lower edge a tidy waist-level crop. No invented lower body, full-body legs, apron, hat, counter, water bottle or tools.",
+    "label": "Người bán hàng — thân trên"
+  },
+  {
+    "name": "green-shirt-man",
+    "frame": "07.5",
+    "pose": "standing",
+    "prompt": "Use case: background-extraction. Asset type: static transparent NPC reference sprite for a Three.js Hanoi street game. Input image is the exact reference video frame. Conservatively reconstruct ONLY the specified character, preserving source clothing, color blocks, body proportions, pose and viewing direction. Restrained simple game-render shading and materials, low-detail ordinary face based only on visible silhouette; do not invent identity or beautify features. Actual transparent alpha outside silhouette and between arms/legs. No scenery, ground, shadow on ground, glow, vehicle, furniture, other people, watermark, text, logos or collage. Do not change outfit or add accessories. Subject: adult male NPC standing at far right doorway at x1170..1209 y237..355. Green cap and bright but muted green short-sleeved polo/shirt, dark straight trousers, simple dark shoes. Full body, relaxed upright stance and side/three-quarter source angle facing left toward street, arms down. Plain clothes without delivery company branding, backpack or extra gear.",
+    "label": "Người áo xanh lá"
+  },
+  {
+    "name": "orange-shirt-man",
+    "frame": "06.5",
+    "pose": "standing",
+    "prompt": "Use case: background-extraction. Asset type: static transparent NPC reference sprite for a Three.js Hanoi street game. Input image is the exact reference video frame. Conservatively reconstruct ONLY the specified character, preserving source clothing, color blocks, body proportions, pose and viewing direction. Restrained simple game-render shading and materials, low-detail ordinary face based only on visible silhouette; do not invent identity or beautify features. Actual transparent alpha outside silhouette and between arms/legs. No scenery, ground, shadow on ground, glow, vehicle, furniture, other people, watermark, text, logos or collage. Do not change outfit or add accessories. Subject: adult male NPC standing beside scooter at x1015..1087 y286..504. Orange protective scooter helmet and orange short-sleeved shirt with pale small central/light collar area, dark trousers and ordinary dark shoes. Whole body with elbows slightly bent, forearms held in front in source pose, side three-quarter view facing left. No invented branding, bags, motorcycle or elaborate phone. Preserve helmet silhouette and ordinary compact build.",
+    "label": "Người áo cam"
+  },
+  {
+    "name": "pink-jacket-woman",
+    "frame": "07.5",
+    "pose": "standing",
+    "prompt": "Use case: background-extraction. Asset type: static transparent NPC reference sprite for a Three.js Hanoi street game. Input image is the exact reference video frame. Conservatively reconstruct ONLY the specified character, preserving source clothing, color blocks, body proportions, pose and viewing direction. Restrained simple game-render shading and materials, low-detail ordinary face based only on visible silhouette; do not invent identity or beautify features. Actual transparent alpha outside silhouette and between arms/legs. No scenery, ground, shadow on ground, glow, vehicle, furniture, other people, watermark, text, logos or collage. Do not change outfit or add accessories. Subject: adult female NPC standing beside white scooter at x999..1070 y241..410. Pink/magenta hooded long-sleeve sun jacket with hood up over simple helmet, pale white face mask, long charcoal-grey skirt, light shoes, small yellow waistband visible. Whole body in relaxed upright stance, hands near hips, source three-quarter angle facing slightly left toward street. No scooter, bag, fashion redesign or uncovered invented face.",
+    "label": "Phụ nữ áo hồng"
+  },
+  {
+    "name": "yellow-blue-child",
+    "frame": "12.3",
+    "pose": "walking",
+    "prompt": "Use case: background-extraction. Asset type: static transparent NPC reference sprite for a Three.js Hanoi street game. Input image is the exact reference video frame. Conservatively reconstruct ONLY the specified character, preserving source clothing, color blocks, body proportions, pose and viewing direction. Restrained simple game-render shading and materials, low-detail ordinary face based only on visible silhouette; do not invent identity or beautify features. Actual transparent alpha outside silhouette and between arms/legs. No scenery, ground, shadow on ground, glow, vehicle, furniture, other people, watermark, text, logos or collage. Do not change outfit or add accessories. Subject: child NPC walking toward camera on right side of main character at x728..788 y359..536. Yellow short-sleeve shirt underneath plain blue bib overall shorts, dark short hair, bare lower legs, simple small footwear as visible. Keep child proportions, casual source walking step with relaxed arms, front three-quarter view. Complete full body, no adult proportions or fashion redesign, no toys, bag, nearby runner, street or cast shadow.",
+    "label": "Trẻ áo vàng–xanh"
+  }
+]

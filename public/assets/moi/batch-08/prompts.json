@@ -1,0 +1,100 @@
+[
+  {
+    "name": "asphalt-texture",
+    "frame": "00",
+    "alpha": false,
+    "prompt": "Asset type: reference bitmap for a Three.js Hanoi city driving game. Source image is a frame from the supplied game video. Conservative reconstruction faithful to visible simple geometry, muted source colors and restrained game-render materials. No embellishment, luxury styling, excessive grime, photorealistic microdetail, invented signs, logos, watermark, collage or unrelated props. Hidden parts are minimal approximate reconstruction. Use case: stylized-concept. Create one square opaque asphalt material texture from the grey-brown road seen in lower frame. Orthographic top-down, flat evenly lit neutral surface, no perspective. Fine muted aggregate, subtle irregularity, no road lines, objects, leaves, cracks, drain, sunlight patches or baked shadows. Fill whole canvas edge-to-edge, repetition-friendly edges. This is a reconstructed color texture, not an exact extraction.",
+    "label": "Texture mặt đường"
+  },
+  {
+    "name": "sidewalk-texture",
+    "frame": "00",
+    "alpha": false,
+    "prompt": "Asset type: reference bitmap for a Three.js Hanoi city driving game. Source image is a frame from the supplied game video. Conservative reconstruction faithful to visible simple geometry, muted source colors and restrained game-render materials. No embellishment, luxury styling, excessive grime, photorealistic microdetail, invented signs, logos, watermark, collage or unrelated props. Hidden parts are minimal approximate reconstruction. Use case: stylized-concept. One square opaque sidewalk color texture based on the muted red terracotta small hexagonal pavement bricks visible at lower right. Orthographic top-down, uniform same-sized repeating hexagonal tiles, subdued narrow grey grout, simple game texture. Fill entire canvas, align repeating tiles at edges, even lighting, no perspective, shadows, props, leaves or curb. No random decorative pattern.",
+    "label": "Texture gạch vỉa hè"
+  },
+  {
+    "name": "curb-segment",
+    "frame": "00",
+    "alpha": true,
+    "prompt": "Asset type: reference bitmap for a Three.js Hanoi city driving game. Source image is a frame from the supplied game video. Conservative reconstruction faithful to visible simple geometry, muted source colors and restrained game-render materials. No embellishment, luxury styling, excessive grime, photorealistic microdetail, invented signs, logos, watermark, collage or unrelated props. Hidden parts are minimal approximate reconstruction. Use case: background-extraction. Isolate the specified object completely, actual transparent alpha outside silhouette and through open gaps. No ground plane, scene background, cast ground shadow, halo or glow. Subject: one short modular section of pale grey concrete roadside curb inspired by the segmented slabs along lower left edge of road. Three contiguous rectangular curb blocks, simple low raised rounded edge, shallow top visible in three-quarter view. No asphalt, red sidewalk or drain.",
+    "label": "Đoạn bó vỉa"
+  },
+  {
+    "name": "utility-pole",
+    "frame": "00",
+    "alpha": true,
+    "prompt": "Asset type: reference bitmap for a Three.js Hanoi city driving game. Source image is a frame from the supplied game video. Conservative reconstruction faithful to visible simple geometry, muted source colors and restrained game-render materials. No embellishment, luxury styling, excessive grime, photorealistic microdetail, invented signs, logos, watermark, collage or unrelated props. Hidden parts are minimal approximate reconstruction. Use case: background-extraction. Isolate the specified object completely, actual transparent alpha outside silhouette and through open gaps. No ground plane, scene background, cast ground shadow, halo or glow. Subject: the tall dark rectangular concrete utility pole at x880..960 with simple pale grey electric junction boxes near its top, as seen at right of source. Full pole from base to top, reconstruct missing height modestly. Preserve rectangular cross-section and source box arrangement. No overhead cable span, street cart, sign or wall. Boxes have simple square vents, no text.",
+    "label": "Cột điện kèm hộp điện"
+  },
+  {
+    "name": "overhead-wires",
+    "frame": "00",
+    "alpha": true,
+    "prompt": "Asset type: reference bitmap for a Three.js Hanoi city driving game. Source image is a frame from the supplied game video. Conservative reconstruction faithful to visible simple geometry, muted source colors and restrained game-render materials. No embellishment, luxury styling, excessive grime, photorealistic microdetail, invented signs, logos, watermark, collage or unrelated props. Hidden parts are minimal approximate reconstruction. Use case: background-extraction. Isolate the specified object completely, actual transparent alpha outside silhouette and through open gaps. No ground plane, scene background, cast ground shadow, halo or glow. Subject: one isolated horizontal span of overhead street electrical cables, based on the bundled dark cables across upper scene. Four to six thin black gently sagging cables with modest irregular spacing and one simple small tie. Whole ends within image, generous margin. No poles, insulators with invented mechanism, red effect, sky or buildings.",
+    "label": "Bó dây điện"
+  },
+  {
+    "name": "metal-fence-panel",
+    "frame": "00",
+    "alpha": true,
+    "prompt": "Asset type: reference bitmap for a Three.js Hanoi city driving game. Source image is a frame from the supplied game video. Conservative reconstruction faithful to visible simple geometry, muted source colors and restrained game-render materials. No embellishment, luxury styling, excessive grime, photorealistic microdetail, invented signs, logos, watermark, collage or unrelated props. Hidden parts are minimal approximate reconstruction. Use case: background-extraction. Isolate the specified object completely, actual transparent alpha outside silhouette and through open gaps. No ground plane, scene background, cast ground shadow, halo or glow. Subject: one modular grey metal fence panel from the right wall at x1060..1276 y120..470. Simple rectangular frame with evenly spaced narrow vertical pickets and pointed tops as in source. No concrete wall; alpha transparent through gaps. Keep source slightly oblique view and utilitarian muted grey painted metal, no ornate design.",
+    "label": "Tấm hàng rào kim loại"
+  },
+  {
+    "name": "shop-window",
+    "frame": "14.5",
+    "alpha": true,
+    "prompt": "Asset type: reference bitmap for a Three.js Hanoi city driving game. Source image is a frame from the supplied game video. Conservative reconstruction faithful to visible simple geometry, muted source colors and restrained game-render materials. No embellishment, luxury styling, excessive grime, photorealistic microdetail, invented signs, logos, watermark, collage or unrelated props. Hidden parts are minimal approximate reconstruction. Use case: background-extraction. Isolate the specified object completely, actual transparent alpha outside silhouette and through open gaps. No ground plane, scene background, cast ground shadow, halo or glow. Subject: the small white framed rectangular shop window on the right green storefront, approximately x1080..1135 y235..290. One simple white rectangular window frame with dark two-pane glazing, restrained reflection. Near frontal view, isolate frame and glass only. No surrounding wall, drapes, flowers or invented decor.",
+    "label": "Cửa sổ"
+  },
+  {
+    "name": "balcony-cage",
+    "frame": "19",
+    "alpha": true,
+    "prompt": "Asset type: reference bitmap for a Three.js Hanoi city driving game. Source image is a frame from the supplied game video. Conservative reconstruction faithful to visible simple geometry, muted source colors and restrained game-render materials. No embellishment, luxury styling, excessive grime, photorealistic microdetail, invented signs, logos, watermark, collage or unrelated props. Hidden parts are minimal approximate reconstruction. Use case: background-extraction. Isolate the specified object completely, actual transparent alpha outside silhouette and through open gaps. No ground plane, scene background, cast ground shadow, halo or glow. Subject: one simple enclosed projecting metal balcony cage of the building on right, seen at x950..1240 y140..360. Reconstruct one cage module only, rectangular floor slab, thin dark vertical steel bars, simple overhead framing, sparse horizontal rails. Preserve everyday Hanoi balcony enclosure proportions and source oblique view. Restore ordinary neutral daylight from the dark red-effect source. No building walls, red light threads, people, plants, roofs or neighboring cages. Transparent through bars.",
+    "label": "Khung ban công"
+  },
+  {
+    "name": "green-metal-awning",
+    "frame": "14.5",
+    "alpha": true,
+    "prompt": "Asset type: reference bitmap for a Three.js Hanoi city driving game. Source image is a frame from the supplied game video. Conservative reconstruction faithful to visible simple geometry, muted source colors and restrained game-render materials. No embellishment, luxury styling, excessive grime, photorealistic microdetail, invented signs, logos, watermark, collage or unrelated props. Hidden parts are minimal approximate reconstruction. Use case: background-extraction. Isolate the specified object completely, actual transparent alpha outside silhouette and through open gaps. No ground plane, scene background, cast ground shadow, halo or glow. Subject: one green corrugated metal storefront awning seen along right row around x840..1035 y130..170. Rectangular shallow sloping sheet with thin dark simple supports, three-quarter angle showing top. No storefront, signboard, water tank or plants. Ordinary dull green painted corrugated metal with mild wear.",
+    "label": "Mái che tôn xanh"
+  },
+  {
+    "name": "green-storefront",
+    "frame": "14.5",
+    "alpha": true,
+    "prompt": "Asset type: reference bitmap for a Three.js Hanoi city driving game. Source image is a frame from the supplied game video. Conservative reconstruction faithful to visible simple geometry, muted source colors and restrained game-render materials. No embellishment, luxury styling, excessive grime, photorealistic microdetail, invented signs, logos, watermark, collage or unrelated props. Hidden parts are minimal approximate reconstruction. Use case: background-extraction. Isolate the specified object completely, actual transparent alpha outside silhouette and through open gaps. No ground plane, scene background, cast ground shadow, halo or glow. Subject: a single ground-floor green-painted storefront module based on the right green shop at x1000..1276 y140..350. Simple rectangular green facade wall, plain dark recessed doorway and one small white-framed window, blank rectangular signboard above, low grey base. Near frontal view. Reconstruct the cropped right edge conservatively. No upper storeys, awning (separate asset), signage text, people, pots, motorbikes, sidewalk or neighbors. Preserve source modest proportions and paint.",
+    "label": "Mặt tiền cửa hàng xanh"
+  },
+  {
+    "name": "street-tree",
+    "frame": "13",
+    "alpha": true,
+    "prompt": "Asset type: reference bitmap for a Three.js Hanoi city driving game. Source image is a frame from the supplied game video. Conservative reconstruction faithful to visible simple geometry, muted source colors and restrained game-render materials. No embellishment, luxury styling, excessive grime, photorealistic microdetail, invented signs, logos, watermark, collage or unrelated props. Hidden parts are minimal approximate reconstruction. Use case: background-extraction. Isolate the specified object completely, actual transparent alpha outside silhouette and through open gaps. No ground plane, scene background, cast ground shadow, halo or glow. Subject: one ordinary leafy street tree with dark brown branching trunk, sparse irregular medium-green crown based on large tree at right around x865..950. Reconstruct complete tree including canopy cut off by frame. Simple restrained game-render leaves, asymmetrical crown, trunk visible, minimal roots at base. Do not add flower bed, planter, hanging cables, bench, ground or lush decorative landscaping.",
+    "label": "Cây đường phố"
+  },
+  {
+    "name": "male-pedestrian",
+    "frame": "14.5",
+    "alpha": true,
+    "prompt": "Asset type: reference bitmap for a Three.js Hanoi city driving game. Source image is a frame from the supplied game video. Conservative reconstruction faithful to visible simple geometry, muted source colors and restrained game-render materials. No embellishment, luxury styling, excessive grime, photorealistic microdetail, invented signs, logos, watermark, collage or unrelated props. Hidden parts are minimal approximate reconstruction. Use case: background-extraction. Isolate the specified object completely, actual transparent alpha outside silhouette and through open gaps. No ground plane, scene background, cast ground shadow, halo or glow. Subject: the adult male NPC standing on left sidewalk near x310..354 y232..335, light muted blue short-sleeve shirt, dark trousers and simple shoes, short dark hair. Full body in relaxed source side three-quarter pose facing right, arms loosely held before him. Reconstruct ordinary low-detail game character facial features minimally. No accessories, backpack, additional person, motorcycle or ground.",
+    "label": "Nhân vật nam"
+  },
+  {
+    "name": "female-pedestrian",
+    "frame": "14.5",
+    "alpha": true,
+    "prompt": "Asset type: reference bitmap for a Three.js Hanoi city driving game. Source image is a frame from the supplied game video. Conservative reconstruction faithful to visible simple geometry, muted source colors and restrained game-render materials. No embellishment, luxury styling, excessive grime, photorealistic microdetail, invented signs, logos, watermark, collage or unrelated props. Hidden parts are minimal approximate reconstruction. Use case: background-extraction. Isolate the specified object completely, actual transparent alpha outside silhouette and through open gaps. No ground plane, scene background, cast ground shadow, halo or glow. Subject: the adult female NPC next to the man on left sidewalk at x359..391 y242..340, dark purple sleeveless calf-length outfit, light pale shoes, dark hair. Full body simple relaxed standing pose facing camera at slight angle as in source. Conservatively reproduce clothes as seen; no fashion redesign, makeup detail, accessories, nearby man or ground. Minimal ordinary game-render face.",
+    "label": "Nhân vật nữ"
+  },
+  {
+    "name": "townhouse-facade",
+    "frame": "19",
+    "alpha": true,
+    "prompt": "Asset type: reference bitmap for a Three.js Hanoi city driving game. Source image is a frame from the supplied game video. Conservative reconstruction faithful to visible simple geometry, muted source colors and restrained game-render materials. No embellishment, luxury styling, excessive grime, photorealistic microdetail, invented signs, logos, watermark, collage or unrelated props. Hidden parts are minimal approximate reconstruction. Use case: background-extraction. Isolate the specified object completely, actual transparent alpha outside silhouette and through open gaps. No ground plane, scene background, cast ground shadow, halo or glow. Subject: one complete narrow Hanoi townhouse facade module based on right-hand building at x950..1276 y0..600. Three simple storeys, muted weathered beige-grey plaster, plain rectangular doors/windows and practical dark steel balcony enclosures, shallow roof edge. Near frontal three-quarter angle, one whole facade only. Approximate hidden boundaries conservatively rather than expanding building. Restore ordinary diffuse daylight instead of red supernatural lighting. Blank storefront sign space; no readable invented text, rooftop water tanks (already separate), flags, AC units, people, tree, street, red effects, neighbors or elaborate ornament.",
+    "label": "Mặt tiền nhà phố"
+  }
+]

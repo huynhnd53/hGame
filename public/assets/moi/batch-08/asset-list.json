@@ -1,0 +1,156 @@
+[
+  {
+    "name": "asphalt-texture",
+    "label": "Texture mặt đường",
+    "file": "textures/asphalt-texture.png",
+    "source_time_seconds": "00",
+    "width": 1254,
+    "height": 1254,
+    "transparent": false,
+    "type": "reconstructed-color-texture",
+    "is_3d_model": false
+  },
+  {
+    "name": "sidewalk-texture",
+    "label": "Texture gạch vỉa hè",
+    "file": "textures/sidewalk-texture.png",
+    "source_time_seconds": "00",
+    "width": 1254,
+    "height": 1254,
+    "transparent": false,
+    "type": "reconstructed-color-texture",
+    "is_3d_model": false
+  },
+  {
+    "name": "curb-segment",
+    "label": "Đoạn bó vỉa",
+    "file": "reconstructed-png/curb-segment.png",
+    "source_time_seconds": "00",
+    "width": 1670,
+    "height": 942,
+    "transparent": true,
+    "type": "reconstructed-reference-sprite",
+    "is_3d_model": false
+  },
+  {
+    "name": "utility-pole",
+    "label": "Cột điện kèm hộp điện",
+    "file": "reconstructed-png/utility-pole.png",
+    "source_time_seconds": "00",
+    "width": 1024,
+    "height": 1536,
+    "transparent": true,
+    "type": "reconstructed-reference-sprite",
+    "is_3d_model": false
+  },
+  {
+    "name": "overhead-wires",
+    "label": "Bó dây điện",
+    "file": "reconstructed-png/overhead-wires.png",
+    "source_time_seconds": "00",
+    "width": 2172,
+    "height": 724,
+    "transparent": true,
+    "type": "reconstructed-reference-sprite",
+    "is_3d_model": false
+  },
+  {
+    "name": "metal-fence-panel",
+    "label": "Tấm hàng rào kim loại",
+    "file": "reconstructed-png/metal-fence-panel.png",
+    "source_time_seconds": "00",
+    "width": 1536,
+    "height": 1024,
+    "transparent": true,
+    "type": "reconstructed-reference-sprite",
+    "is_3d_model": false
+  },
+  {
+    "name": "shop-window",
+    "label": "Cửa sổ",
+    "file": "reconstructed-png/shop-window.png",
+    "source_time_seconds": "14.5",
+    "width": 1391,
+    "height": 1131,
+    "transparent": true,
+    "type": "reconstructed-reference-sprite",
+    "is_3d_model": false
+  },
+  {
+    "name": "balcony-cage",
+    "label": "Khung ban công",
+    "file": "reconstructed-png/balcony-cage.png",
+    "source_time_seconds": "19",
+    "width": 1412,
+    "height": 1114,
+    "transparent": true,
+    "type": "reconstructed-reference-sprite",
+    "is_3d_model": false
+  },
+  {
+    "name": "green-metal-awning",
+    "label": "Mái che tôn xanh",
+    "file": "reconstructed-png/green-metal-awning.png",
+    "source_time_seconds": "14.5",
+    "width": 1774,
+    "height": 887,
+    "transparent": true,
+    "type": "reconstructed-reference-sprite",
+    "is_3d_model": false
+  },
+  {
+    "name": "green-storefront",
+    "label": "Mặt tiền cửa hàng xanh",
+    "file": "reconstructed-png/green-storefront.png",
+    "source_time_seconds": "14.5",
+    "width": 1670,
+    "height": 942,
+    "transparent": true,
+    "type": "reconstructed-reference-sprite",
+    "is_3d_model": false
+  },
+  {
+    "name": "street-tree",
+    "label": "Cây đường phố",
+    "file": "reconstructed-png/street-tree.png",
+    "source_time_seconds": "13",
+    "width": 1024,
+    "height": 1536,
+    "transparent": true,
+    "type": "reconstructed-reference-sprite",
+    "is_3d_model": false
+  },
+  {
+    "name": "male-pedestrian",
+    "label": "Nhân vật nam",
+    "file": "reconstructed-png/male-pedestrian.png",
+    "source_time_seconds": "14.5",
+    "width": 1024,
+    "height": 1536,
+    "transparent": true,
+    "type": "reconstructed-reference-sprite",
+    "is_3d_model": false
+  },
+  {
+    "name": "female-pedestrian",
+    "label": "Nhân vật nữ",
+    "file": "reconstructed-png/female-pedestrian.png",
+    "source_time_seconds": "14.5",
+    "width": 1024,
+    "height": 1536,
+    "transparent": true,
+    "type": "reconstructed-reference-sprite",
+    "is_3d_model": false
+  },
+  {
+    "name": "townhouse-facade",
+    "label": "Mặt tiền nhà phố",
+    "file": "reconstructed-png/townhouse-facade.png",
+    "source_time_seconds": "19",
+    "width": 1024,
+    "height": 1536,
+    "transparent": true,
+    "type": "reconstructed-reference-sprite",
+    "is_3d_model": false
+  }
+]

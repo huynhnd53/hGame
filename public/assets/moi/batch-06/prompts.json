@@ -1,0 +1,17 @@
+[
+  {
+    "name": "green-vendor-counter",
+    "frame": "10",
+    "prompt": "Use case: background-extraction. Asset type: transparent reference sprite for a Three.js street game. Input image is a frame from a game video. Conservatively reconstruct ONLY the specified visible object, keeping its proportions, source viewing angle, simple game-render materials and restrained wear. Actual transparent alpha background, isolated complete silhouette with margin. Do not invent decorative details or logos. No environment, ground, shadow on ground, other props, people, text labels, watermark, checkerboard, or collage. This is a reconstructed sprite, not a 3D mesh. Subject: the small mint green freestanding vendor counter across the street at x626..712 y278..326. Plain rectangular pale green front panel, short right side visible, flat light grey metal top with a shallow simple rack/tray visible on top. Preserve modest rectangular utilitarian form. Exclude red stools, blue water jug, bench, tree and vendor; do not add wheels, awning, sink, tap, signage or food display."
+  },
+  {
+    "name": "drain-grate",
+    "frame": "00",
+    "prompt": "Use case: background-extraction. Asset type: transparent reference sprite for a Three.js street game. Input image is a frame from a game video. Conservatively reconstruct ONLY the specified visible object, keeping its proportions, source viewing angle, simple game-render materials and restrained wear. Actual transparent alpha background, isolated complete silhouette with margin. Do not invent decorative details or logos. No environment, ground, shadow on ground, other props, people, text labels, watermark, checkerboard, or collage. This is a reconstructed sprite, not a 3D mesh. Subject: the small dark rectangular slotted metal storm drain grate in the pavement at x387..434 y470..494, left of the main character. Isolate the grate only, preserve its oblique top-down perspective and straightforward parallel slots inside a slim rectangular frame. Make the empty slots transparent. No concrete slab, curb, bricks or road. Ordinary muted charcoal metal, no rust embellishment."
+  },
+  {
+    "name": "olive-backpack",
+    "frame": "10",
+    "prompt": "Use case: background-extraction. Asset type: transparent reference sprite for a Three.js street game. Input image is a frame from a game video. Conservatively reconstruct ONLY the specified visible object, keeping its proportions, source viewing angle, simple game-render materials and restrained wear. Actual transparent alpha background, isolated complete silhouette with margin. Do not invent decorative details or logos. No environment, ground, shadow on ground, other props, people, text labels, watermark, checkerboard, or collage. This is a reconstructed sprite, not a 3D mesh. Subject: the olive-grey canvas backpack on the main character's back at x530..590 y378..461. Backpack only, in the visible three-quarter rear view. Plain rounded rectangular shape, top handle, visible front flap/pocket and simple straps, muted olive grey fabric and dark underside. Exclude the human body, shirt, hair, legs. Reconstruct only the hidden shoulder straps minimally; no extra gear, logos or decorative badges."
+  }
+]

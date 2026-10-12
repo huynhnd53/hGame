@@ -203,6 +203,8 @@ function riderGeometry(l: Layout, helmet: number): THREE.BufferGeometry {
     // Torso leaning a little forward towards the bars.
     colored(new THREE.BoxGeometry(0.4, 0.56, 0.26).rotateX(-0.22).translate(0, seatY + 0.38, seatZ - 0.05), JACKET),
     box(0.27, 0.29, 0.3, 0, seatY + 0.83, seatZ - 0.12, helmet),
+    // White band over the crown, like the orange-and-white helmet photo.
+    box(0.09, 0.3, 0.31, 0, seatY + 0.835, seatZ - 0.12, 0xece8de),
     box(0.22, 0.1, 0.02, 0, seatY + 0.83, seatZ - 0.275, 0x0c0c0e),
   ];
   for (const s of [-1, 1]) {
@@ -261,7 +263,7 @@ export class PlayerBike {
     shadow.position.y = 0.02;
     this.group.add(shadow);
 
-    const helmet = model.paint === 0x18191b || model.paint === 0x1b1c1f ? 0x2b2d31 : model.paint;
+    const helmet = 0xe8742a;
     this.lean.add(new THREE.Mesh(mergeGeometries([...l.body, riderGeometry(l, helmet)]), this.bodyMat));
     const wheelGeo = wheel(l.r);
     this.rearWheel = new THREE.Mesh(wheelGeo, this.bodyMat);

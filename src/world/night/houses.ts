@@ -22,6 +22,12 @@ export interface StreetLight {
 
 const CURB_H = 0.16;
 const PARAPET_H = 0.9;
+/**
+ * props/awnings.webp: one 128 px row per awning style (blue-white, green tin, red-white, plain), each with the
+ * sloping cover in its top 84 px and the hanging lip in px 88–128. A row repeats every AWNING_ROW_M metres.
+ */
+const AWNING_ROW_M = 3.2;
+const awningV = (y: number) => 1 - y / 512;
 const UP = new THREE.Vector3(0, 1, 0);
 
 /** Accumulates quads into flat arrays for one merged BufferGeometry. */
@@ -231,8 +237,7 @@ export function buildHouses(lots: Lot[], atlas: FacadeAtlas, signCount: number, 
 
     // Awning over the ground floor.
     if (lot.awning !== null) {
-      const v0 = 1 - (lot.awning + 1) / 4;
-      const v1 = 1 - lot.awning / 4;
+      const row = lot.awning * 128;
       const yTop = CURB_H + GROUND_FLOOR_H - 0.15;
       const out = 1.35;
       const drop = 0.5;
@@ -241,9 +246,11 @@ export function buildHouses(lots: Lot[], atlas: FacadeAtlas, signCount: number, 
       const slope = n.clone().multiplyScalar(out).setY(-drop);
       // Built right-to-left so the winding faces up; the stripes run down the slope.
       const slopeNormal = new THREE.Vector3().crossVectors(along.clone().negate(), slope).normalize();
-      awnings.quad(start.clone().add(along), along.clone().negate(), slope, slopeNormal, [0, v1, 1, v0], white);
+      const rep = (fw - 0.4) / AWNING_ROW_M;
+      awnings.quad(start.clone().add(along), along.clone().negate(), slope, slopeNormal, [0, awningV(row + 2), rep, awningV(row + 82)], white);
       const lip = start.clone().add(slope);
-      awnings.quad(lip.clone().setY(lip.y - 0.25), along, Uv(0.25), n, [0, v0, 1, v0 + 0.06], white);
+      const lipH = 0.32;
+      awnings.quad(lip.clone().setY(lip.y - lipH), along, Uv(lipH), n, [0, awningV(row + 126), rep, awningV(row + 89)], white);
     }
 
     // Lit shop sign above the opening.

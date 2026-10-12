@@ -224,7 +224,11 @@ function louvres(ctx: Ctx, x: number, y: number, w: number, h: number, col: [num
   ctx.fillRect(x + w / 2 - 1, y, 2, h);
 }
 
-export function buildFacadeAtlas(): FacadeAtlas {
+/**
+ * Draws the facade atlas. With `photoBase`, the folding gate, the house door and the plain and lit windows are
+ * swapped for the photo props once they have loaded (the drawn versions show until then).
+ */
+export function buildFacadeAtlas(photoBase?: string): FacadeAtlas {
   const W = CELL * COLS;
   const H = CELL * ROWS;
   const [albedo, a] = canvas(W, H);
@@ -385,13 +389,6 @@ export function buildFacadeAtlas(): FacadeAtlas {
           windowGlass(a, wx, y0 + 80, 46, 46, null);
           bars(a, wx, y0 + 80, 46, 46);
         }
-        // An air-conditioner unit.
-        a.fillStyle = rgb(190, 188, 180);
-        a.fillRect(x0 + 92, y0 + 160, 64, 44);
-        a.fillStyle = 'rgba(0,0,0,0.35)';
-        a.beginPath();
-        a.arc(x0 + 136, y0 + 182, 14, 0, Math.PI * 2);
-        a.fill();
         break;
     }
   }
@@ -429,6 +426,49 @@ export function buildFacadeAtlas(): FacadeAtlas {
   const PH = ROWS * PITCH;
   const map = toTexture(withGutters(albedo, PW, PH, true), true, false);
   const emissiveMap = toTexture(withGutters(emissive, PW, PH, false), true, false);
+  if (photoBase && typeof Image !== 'undefined') {
+    const load = (name: string) =>
+      new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = `${photoBase}${name}.webp`;
+      });
+    Promise.all([load('facade-gate'), load('facade-door'), load('facade-window')])
+      .then(([gate, door, win]) => {
+        const opening = (k: number) => {
+          const [x0, y0] = cell(k, ROW_GROUND);
+          return [x0 + 18, y0 + 40, CELL - 36, CELL - 40] as const;
+        };
+        // Ground floor: the folding steel gate, and the wooden double door between its side shutters.
+        a.drawImage(gate, ...opening(2));
+        const [dx, dy, dw, dh] = opening(6);
+        a.drawImage(door, dx + 40, dy + 20, dw - 80, dh - 20);
+        // Upper floors: one wide window, behind security bars (unlit) or glowing warm (lit).
+        for (const k of [2, 3]) {
+          const [x0, y0] = cell(k, ROW_UPPER);
+          stucco(a, x0, y0, 200 + k);
+          e.fillStyle = '#000';
+          e.fillRect(x0, y0, CELL, CELL);
+          const ww = 184;
+          const wh = 132;
+          const wx = x0 + (CELL - ww) / 2;
+          const wy = y0 + 66;
+          recess(a, wx - 4, wy - 4, ww + 8, wh + 8);
+          a.drawImage(win, wx, wy, ww, wh);
+          if (k === 2) bars(a, wx + 10, wy + 10, ww - 20, wh - 20);
+          else for (const px of [0.07, 0.53]) windowGlass(e, wx + px * ww, wy + 0.09 * wh, 0.4 * ww, 0.82 * wh, 'warm');
+        }
+        for (const [tex, src, extend] of [
+          [map, albedo, true],
+          [emissiveMap, emissive, false],
+        ] as const) {
+          (tex.image as HTMLCanvasElement).getContext('2d')!.drawImage(withGutters(src, PW, PH, extend), 0, 0);
+          tex.needsUpdate = true;
+        }
+      })
+      .catch(() => {});
+  }
   const inset = 0.5;
   return {
     map,

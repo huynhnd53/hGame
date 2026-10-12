@@ -14,6 +14,9 @@ Bản chơi: https://huynhnd53.github.io/vgang-online/
 - Phố có hơi thở đời thường: quán vỉa hè ghế nhựa, xe đẩy, quầy hàng, kệ snack, xe máy đỗ trước nhà, chậu cây,
   cây xanh, cột điện với dây điện vắt ngang đường, cục nóng điều hòa, cờ đỏ sao vàng, biển vẫy (CÀ PHÊ, TRÀ ĐÁ…)
   và bồn nước inox trên mái. Người đi bộ là ảnh người thật, quay mặt theo hướng đi.
+- Nhà phố dùng ảnh thật cho cửa sắt kéo, cửa gỗ, cửa sổ khung trắng; mái hiên sọc xanh-trắng, tôn xanh, sọc
+  đỏ-trắng; công viên và hồ có hàng rào; ghế đá xanh rêu; nắp cống dọc mép đường; hộp công tơ điện trên tường.
+  Xe máy NPC dán ảnh xe và người lái ở hai bên hông, nhìn ngang như xe thật.
 - Có thể phi lên vỉa hè (xe nảy nhẹ khi qua bó vỉa); cột đèn, bồn cây, ghế đá, cọc giao thông và mặt tiền nhà vẫn chặn xe.
 - Mỗi xe có tiếng bô riêng: tay ga êm hoặc trầm, tay ga thể thao khàn, côn tay có sang số và nổ pô khi nhả ga,
   xe số "tạch tạch". Bấm vào xe ở màn chọn xe để nghe thử.

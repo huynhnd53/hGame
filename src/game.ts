@@ -120,7 +120,7 @@ export class Game {
     this.staticColliders = [...this.city.colliders, ...this.night.obstacles];
     // Motorbikes, cars and people moving about the city.
     this.traffic = new Traffic(this.city, 220, 320);
-    this.npcs = new NpcView(this.traffic, (x, z) => this.night.levelAt(x, z));
+    this.npcs = new NpcView(this.traffic, (x, z) => this.night.levelAt(x, z), `${import.meta.env.BASE_URL}assets/`);
     this.scene.add(this.npcs.group);
 
     this.camera.rotation.order = 'YXZ';

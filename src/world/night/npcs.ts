@@ -1,12 +1,24 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { Pedestrian, Traffic, Vehicle } from '../../sim/traffic';
+import { billboards, loadTexture } from './billboards';
 import { radialTexture } from './proc';
 
 const CURB_H = 0.16;
 const CAR_PAINT = [0x8b1e1e, 0xd8d8d2, 0x1f3b66, 0x2a2a2c, 0x6d6f73, 0x8a6a2c, 0x274d3a, 0xb8b0a0];
 const BIKE_PAINT = [0xb3261e, 0x1d4f91, 0xe8e6df, 0x202022, 0x6d6f73, 0x2f6f3a, 0xa1781a, 0x7a1414];
-const SHIRTS = [0x3b6ea8, 0xc94f3d, 0xe0c060, 0x4a8a5a, 0xdddddd, 0x6d4a8a, 0x2b2b2b, 0xd08a4a];
+/**
+ * People on the sidewalks are photo cut-outs: image proportions, height in metres, and whether the person in
+ * the photo faces the image's right side (so they can be mirrored to face where they walk).
+ */
+export const WALKERS = [
+  { name: 'walker-man', aspect: 0.275, height: 1.72, facesRight: true },
+  { name: 'walker-woman', aspect: 0.27, height: 1.62, facesRight: true },
+  { name: 'walker-green', aspect: 0.246, height: 1.7, facesRight: false },
+  { name: 'walker-orange', aspect: 0.305, height: 1.7, facesRight: false },
+  { name: 'walker-pink', aspect: 0.285, height: 1.6, facesRight: false },
+  { name: 'walker-child', aspect: 0.355, height: 1.15, facesRight: true },
+];
 
 /** Box with a single colour baked into vertex colours (white means "use the instance colour"). */
 export function box(w: number, h: number, d: number, x: number, y: number, z: number, color = 0xffffff): THREE.BufferGeometry {
@@ -40,14 +52,6 @@ function bikeBody() {
   ]);
 }
 
-function walkerBody() {
-  return mergeGeometries([
-    box(0.4, 0.8, 0.25, 0, 0.4, 0, 0x2b2e36), // legs
-    box(0.46, 0.62, 0.28, 0, 1.11, 0), // shirt (instance colour)
-    box(0.22, 0.24, 0.22, 0, 1.56, 0, 0xc8a080), // head
-  ]);
-}
-
 /** Head- and tail-lamps as small bright boxes; unlit so they read at night. */
 function lamps(kind: Vehicle['kind']) {
   if (kind === 'car') {
@@ -73,7 +77,8 @@ export class NpcView {
   readonly group = new THREE.Group();
   private cars: Group<Vehicle>;
   private bikes: Group<Vehicle>;
-  private walkers: Group<Pedestrian>;
+  /** One instanced cut-out per kind of person, positions rewritten every frame. */
+  private walkers: { mesh: THREE.Mesh; people: Pedestrian[]; facesRight: boolean }[];
   private glow: THREE.Points;
   private glowPos: Float32Array;
   private m = new THREE.Matrix4();
@@ -87,6 +92,7 @@ export class NpcView {
   constructor(
     private traffic: Traffic,
     private levelAt: (x: number, z: number) => number,
+    assetBase: string,
   ) {
     const body = new THREE.MeshBasicMaterial({ vertexColors: true });
     const lit = new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
@@ -111,7 +117,16 @@ export class NpcView {
     const vs = traffic.vehicles;
     this.cars = make(vs.filter((v) => v.kind === 'car'), carBody(), CAR_PAINT, lamps('car'));
     this.bikes = make(vs.filter((v) => v.kind === 'bike'), bikeBody(), BIKE_PAINT, lamps('bike'));
-    this.walkers = make(traffic.pedestrians, walkerBody(), SHIRTS);
+    this.walkers = WALKERS.map((w, k) => {
+      const people = traffic.pedestrians.filter((_, i) => i % WALKERS.length === k);
+      const mesh = billboards(
+        loadTexture(`${assetBase}props/${w.name}.webp`),
+        people.map((p) => ({ pos: new THREE.Vector3(p.x, CURB_H, p.z) })),
+        { width: w.height * w.aspect, height: w.height, anchorX: 0.5, brightness: 0.85, dynamic: true },
+      );
+      this.group.add(mesh);
+      return { mesh, people, facesRight: w.facesRight };
+    });
 
     // Soft glow in front of every headlight.
     this.glowPos = new Float32Array(vs.length * 3);
@@ -148,7 +163,11 @@ export class NpcView {
     };
     tint(this.cars);
     tint(this.bikes);
-    tint(this.walkers);
+    for (const w of this.walkers) {
+      const light = w.mesh.geometry.getAttribute('aLight') as THREE.BufferAttribute;
+      w.people.forEach((p, i) => light.setX(i, 0.25 + Math.min(1, this.levelAt(p.x, p.z)) * 0.85));
+      light.needsUpdate = true;
+    }
   }
 
   update(dt: number): void {
@@ -166,7 +185,18 @@ export class NpcView {
     const onSidewalk = (it: object) => 'loop' in it;
     place(this.cars);
     place(this.bikes);
-    place(this.walkers, (p) => Math.abs(Math.sin((p as Pedestrian).phase)) * 0.04);
+    for (const w of this.walkers) {
+      const pos = w.mesh.geometry.getAttribute('aPos') as THREE.BufferAttribute;
+      const out = w.mesh.geometry.getAttribute('aOut') as THREE.BufferAttribute;
+      const sign = w.facesRight ? 1 : -1;
+      w.people.forEach((p, i) => {
+        // A small bounce in step; the photo is mirrored so the person faces the way they walk.
+        pos.setXYZ(i, p.x, CURB_H + Math.abs(Math.sin(p.phase)) * 0.03, p.z);
+        out.setXY(i, -Math.sin(p.heading) * sign, -Math.cos(p.heading) * sign);
+      });
+      pos.needsUpdate = true;
+      out.needsUpdate = true;
+    }
 
     this.traffic.vehicles.forEach((v, i) => {
       const ahead = v.length / 2 + 0.6;

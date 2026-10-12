@@ -5,6 +5,8 @@ import { AMBIENT, bakeLight, LightGrid } from './bake';
 import { type BillboardItem, billboards, loadTexture } from './billboards';
 import { buildFacadeAtlas, buildSignAtlas } from './facade';
 import { buildHouses, QuadBuilder, type StreetLight } from './houses';
+import { alongRoad, lampSpots } from './layout';
+import { buildStreetLife } from './streetLife';
 import { canvas, makeNoise, paint, radialTexture, toTexture } from './proc';
 import * as S from './surfaces';
 
@@ -36,22 +38,6 @@ export interface NightCity {
   /** Light level at a point, roughly 0..1, used to dim the cockpit photo. */
   levelAt(x: number, z: number): number;
 }
-
-/** Positions along a road where furniture may go (away from junctions). */
-function alongRoad(city: City, spacing: number, offset: number, margin: number): number[] {
-  const out: number[] = [];
-  const lo = city.roads[0];
-  const hi = city.roads[city.roads.length - 1];
-  for (let t = lo + offset; t <= hi; t += spacing) {
-    if (city.roads.some((r) => Math.abs(t - r) < ROAD / 2 + margin)) continue;
-    out.push(t);
-  }
-  return out;
-}
-
-/** Street lamps every LAMP_SPACING metres along each curb, staggered between the two sides of a road. */
-const LAMP_SPACING = 18;
-const lampSpots = (city: City, side: number) => alongRoad(city, LAMP_SPACING, side < 0 ? 6 : 6 + LAMP_SPACING / 2, 2.5);
 
 export function layoutLamps(city: City): Lamp[] {
   const lamps: Lamp[] = [];
@@ -160,9 +146,11 @@ export function buildNightCity(city: City, assetBase: string): NightCity {
   const grid = new LightGrid(lights);
 
   // ---- Ground -------------------------------------------------------------------------------
-  const asphalt = S.asphalt(256);
+  // Photo asphalt (it repeats every 6 m), darkened from daylight to a night road.
+  const asphalt = loadTexture(`${assetBase}props/asphalt.webp`);
+  asphalt.wrapS = asphalt.wrapT = THREE.RepeatWrapping;
   const road = bakeLight(groundGrid(-outer, -outer, outer, outer, 0, 2.5, 6), grid);
-  group.add(new THREE.Mesh(road, basic({ map: asphalt.map })));
+  group.add(new THREE.Mesh(road, basic({ map: asphalt, color: new THREE.Color().setScalar(0.42) })));
 
   const tiles = S.sidewalkTiles(256);
   const walkGeos: THREE.BufferGeometry[] = [];
@@ -390,6 +378,10 @@ export function buildNightCity(city: City, assetBase: string): NightCity {
   }
   group.add(billboards(loadTexture(`${assetBase}cone.png`), cones, { ...CONE, anchorX: 0.5, brightness: 0.8 }));
 
+  // ---- Everyday street life from the photo props ----------------------------------------------------
+  const life = buildStreetLife(city, lots, assetBase, lightAt, mulberry32(777));
+  group.add(life.group);
+
   // ---- Headlight pool ---------------------------------------------------------------------------
   const [hc, hctx] = canvas(128, 256);
   const grad = hctx.createRadialGradient(64, 250, 4, 64, 200, 210);
@@ -429,6 +421,7 @@ export function buildNightCity(city: City, assetBase: string): NightCity {
     ...planters.map((p) => box(p.pos, 1.2)),
     ...benches.map((p) => box(p.pos, 1.0)),
     ...cones.map((p) => box(p.pos, 0.35)),
+    ...life.obstacles,
   ];
 
   return {

@@ -19,6 +19,8 @@ export interface BillboardOptions {
   /** Overall brightness of the photo at night. */
   brightness?: number;
   tint?: THREE.Color;
+  /** Positions, facing and light will be rewritten every frame (moving people). */
+  dynamic?: boolean;
 }
 
 /**
@@ -39,6 +41,7 @@ export function billboards(texture: THREE.Texture, items: BillboardItem[], o: Bi
     new THREE.InstancedBufferAttribute(new Float32Array(items.flatMap((i) => [i.out?.x ?? 0, i.out?.z ?? 0])), 2),
   );
   g.setAttribute('aLight', new THREE.InstancedBufferAttribute(new Float32Array(items.map((i) => i.light ?? 1)), 1));
+  if (o.dynamic) for (const a of ['aPos', 'aOut', 'aLight']) (g.getAttribute(a) as THREE.InstancedBufferAttribute).setUsage(THREE.DynamicDrawUsage);
 
   const tint = o.tint ?? new THREE.Color(1, 1, 1);
   const m = new THREE.ShaderMaterial({

@@ -31,6 +31,7 @@ import { compassName, compassShort, localToUtc, sunPosition, zoneOffsetHours } f
 import { pointsAlong } from '../newmap/src/model';
 import { searchPlaces } from '../newmap/src/nominatim';
 import { filterPlaces, groupOf, listPlaces } from '../newmap/src/places';
+import { clampSplit } from '../newmap/src/split';
 
 const HANOI: LonLat = [105.8262, 21.0042];
 
@@ -809,5 +810,16 @@ describe('places to fly to', () => {
     expect(m.buildings.map((b) => `${b.category}:${b.name}`)).toEqual(['museum:Bảo tàng']);
     expect(listPlaces(m).map((q) => q.group)).toEqual(['Trường học', 'Chợ', 'Cơ quan, công trình']);
     expect(buildQuery(boundary.map((q) => p.toLonLat(q)))).toContain('"amenity"~"^(school|');
+  });
+});
+
+describe('splitter between map and 3D', () => {
+  it('shares the space but never squeezes a pane below its minimum', () => {
+    expect(clampSplit(600, 1200)).toBe(0.5);
+    expect(clampSplit(50, 1200)).toBeCloseTo(300 / 1200);
+    expect(clampSplit(1190, 1200)).toBeCloseTo(900 / 1200);
+    // A box too small for two minimum panes splits in the middle.
+    expect(clampSplit(10, 500)).toBe(0.5);
+    expect(clampSplit(10, 0)).toBe(0.5);
   });
 });

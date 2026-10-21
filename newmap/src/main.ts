@@ -6,6 +6,7 @@ import { type BuildResult, buildArea } from './pipeline';
 import { AreaView } from './scene3d';
 import { pointInRing, type XZ } from './geo';
 import { filterPlaces, listPlaces, type Place, PLACE_GROUPS } from './places';
+import { initSplitter } from './split';
 import { compassName, compassShort, localToUtc, sunPosition, zoneOffsetHours } from './sun';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -444,6 +445,7 @@ map.onMapClick = ([lon, lat]) => {
 };
 bySource.addEventListener('change', () => result && decor && view?.show(result.model, decor, { bySource: bySource.checked }));
 $('btn-json').addEventListener('click', downloadJson);
+initSplitter($('panes'), $('splitter'));
 refresh();
 updateSun();
 if (import.meta.env.DEV) Object.assign(window, { __newmap: map });

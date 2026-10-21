@@ -37,7 +37,8 @@ Quãng đường (đồng hồ km), vị trí, đèn và âm thanh được lưu
 ## Dựng khu thật (`newmap/`)
 
 Trang riêng tại `newmap/` (bản chơi: https://huynhnd53.github.io/vgang-online/newmap/): bản đồ tối bên trái, mô hình
-3D bên phải. Tìm địa điểm (phím `/`), vẽ khu bằng nút khung (kéo chuột/ngón tay, hoặc giữ Shift và kéo), chấm từng góc,
+3D bên phải (trên điện thoại: bản đồ trên, 3D dưới). Thanh giữa hai bên kéo được để đổi cỡ, bên kia co giãn theo; bấm
+đúp để về mặc định, trình duyệt nhớ cỡ đã chọn. Tìm địa điểm (phím `/`), vẽ khu bằng nút khung (kéo chuột/ngón tay, hoặc giữ Shift và kéo), chấm từng góc,
 hoặc lấy ô vuông 500 m giữa màn hình; vẽ xong vẫn kéo được các góc. Bấm **Dựng khu này** (hoặc **Ví dụ Khương Thượng**)
 để dựng khu đó thành 3D từ dữ liệu thật.
 
@@ -80,7 +81,7 @@ Cách ghép hai nguồn nhà (`newmap/src/merge.ts`):
 
 Cấu trúc: `overpass.ts` (truy vấn, chọn máy, đọc kết quả), `nominatim.ts`, `openBuildings.ts` + `s2.ts` (đọc
 GeoParquet theo byte), `model.ts` (đổi sang mét, chiều cao, bề rộng đường), `merge.ts`, `pipeline.ts` (ghép cả quy
-trình), `decor.ts` (cây), `places.ts` (danh sách địa điểm), `sun.ts` (vị trí mặt trời), `scene3d.ts` (three.js), `mapView.ts` (Leaflet, vẽ khu),
+trình), `decor.ts` (cây), `places.ts` (danh sách địa điểm), `split.ts` (thanh kéo đổi cỡ), `sun.ts` (vị trí mặt trời), `scene3d.ts` (three.js), `mapView.ts` (Leaflet, vẽ khu),
 `main.ts`. Nút *Tải dữ liệu khu (JSON)* xuất toàn bộ
 khu (toạ độ mét, x hướng đông, z hướng nam) để dùng tiếp, ví dụ đưa vào game.
 

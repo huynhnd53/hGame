@@ -18,7 +18,7 @@
       <button class="btn ghost" id="btn-example" type="button">Ví dụ Khương Thượng</button>
     </header>
 
-    <main>
+    <main id="panes">
       <section class="pane map-pane">
         <div id="map"></div>
 
@@ -53,10 +53,21 @@
         </div>
       </section>
 
+      <div
+        class="splitter"
+        id="splitter"
+        role="separator"
+        tabindex="0"
+        aria-label="Kéo để đổi cỡ bản đồ và cảnh 3D (bấm đúp để về mặc định)"
+        title="Kéo để đổi cỡ hai bên · bấm đúp để về mặc định"
+        aria-valuemin="0"
+        aria-valuemax="100"
+      ><span></span></div>
+
       <section class="pane view-pane" id="view-wrap">
         <canvas id="view"></canvas>
         <div class="empty" id="empty">
-          <p>Vẽ một khu bên trái rồi bấm <b>Dựng khu này</b>.</p>
+          <p>Vẽ một khu trên bản đồ rồi bấm <b>Dựng khu này</b>.</p>
           <p class="muted">Hoặc bấm <b>Ví dụ Khương Thượng</b> ở góc trên.</p>
         </div>
 

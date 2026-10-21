@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { carAt, type Decor } from './decor';
+import type { Decor } from './decor';
 import { type Ring, ringArea, ringBounds, type XZ } from './geo';
 import { hash01, LEVEL_H, type SceneBuilding, type SceneModel } from './model';
 import type { SunPosition } from './sun';
@@ -14,7 +14,6 @@ const WORSHIP_WALL = '#f0d58a';
 const WORSHIP_ROOF = '#a8382a';
 const HERITAGE_WALL = '#e3cf9f';
 const HERITAGE_ROOF = '#7a4b3a';
-const CAR_COLORS = ['#f4f4f2', '#c9ccd0', '#d63c35', '#f2c230', '#3a64b8', '#26292c', '#6d7378', '#f4f4f2'];
 
 /** Size of one window bay on a facade, metres. */
 const BAY_W = 3;
@@ -385,7 +384,7 @@ const DUSK_SKY = new THREE.Color('#f0b98a');
 const NIGHT_SKY = new THREE.Color('#0d1626');
 
 /**
- * The 3D view of a built area: facades with windows, pitched roofs, roads with markings, trees, moving cars, and a
+ * The 3D view of a built area: facades with windows, pitched roofs, roads with markings, trees, and a
  * sun that casts shadows for any time of day. Drag to turn, right-drag or two fingers to move, wheel or pinch to
  * zoom; it spins slowly when first shown, until touched.
  */
@@ -400,14 +399,12 @@ export class AreaView {
   private readonly textures = facadeTextures();
   private readonly facadeMaterial: THREE.MeshLambertMaterial;
   private content: THREE.Group | null = null;
-  private cars: { mesh: THREE.InstancedMesh; decor: Decor } | null = null;
   private model: SceneModel | null = null;
   private home: { position: THREE.Vector3; target: THREE.Vector3 } | null = null;
   private glide: Glide | null = null;
   private radius = 300;
   private frame = 0;
   private last = 0;
-  private clock = 0;
   private lastState = '';
   /** Called when spinning starts or stops, to update the button. */
   onSpinChange: (spinning: boolean) => void = () => {};
@@ -524,6 +521,27 @@ export class AreaView {
     this.turn({ yaw });
   }
 
+  /**
+   * Flies the camera to look at a spot, from about 50° above the horizon and keeping the current heading; `size`
+   * (metres) sets how far back it stays.
+   */
+  flyTo(at: XZ, size: number): void {
+    this.setSpin(false);
+    const target = new THREE.Vector3(at[0], 0, at[1]);
+    const from = new THREE.Spherical().setFromVector3(this.camera.position.clone().sub(this.controls.target));
+    const radius = THREE.MathUtils.clamp(size * 2.2 + 60, 70, 700);
+    const position = new THREE.Vector3().setFromSpherical(new THREE.Spherical(radius, 0.7, from.theta)).add(target);
+    const far = target.distanceTo(this.controls.target);
+    this.glideTo(position, target, THREE.MathUtils.clamp(500 + far, 600, 1400));
+  }
+
+  /** Where a ground point (raised by `height`) is on screen, in CSS pixels, or null when behind the camera. */
+  project(at: XZ, height: number): { x: number; y: number } | null {
+    const v = new THREE.Vector3(at[0], height, at[1]).project(this.camera);
+    if (v.z > 1 || v.z < -1) return null;
+    return { x: ((v.x + 1) / 2) * this.canvas.clientWidth, y: ((1 - v.y) / 2) * this.canvas.clientHeight };
+  }
+
   /** Back to the view the area was first shown from. */
   reset(): void {
     if (!this.home) return;
@@ -531,13 +549,13 @@ export class AreaView {
     this.glideTo(this.home.position, this.home.target);
   }
 
-  private glideTo(position: THREE.Vector3, target: THREE.Vector3): void {
+  private glideTo(position: THREE.Vector3, target: THREE.Vector3, duration = 350): void {
     const from = new THREE.Spherical().setFromVector3(this.camera.position.clone().sub(this.controls.target));
     const to = new THREE.Spherical().setFromVector3(position.clone().sub(target));
     // Turn the short way round.
     while (to.theta - from.theta > Math.PI) to.theta -= 2 * Math.PI;
     while (to.theta - from.theta < -Math.PI) to.theta += 2 * Math.PI;
-    this.glide = { from, to, fromTarget: this.controls.target.clone(), toTarget: target.clone(), start: performance.now(), duration: 350 };
+    this.glide = { from, to, fromTarget: this.controls.target.clone(), toTarget: target.clone(), start: performance.now(), duration };
   }
 
   private frameArea(boundary: Ring): void {
@@ -634,6 +652,7 @@ export class AreaView {
     // Temples and monuments mapped as a single point get a small marker.
     const pins = new Soup();
     for (const p of m.pois) {
+      if (p.kind === 'place') continue;
       const c = colorOf(p.kind === 'worship' ? WORSHIP_ROOF : HERITAGE_ROOF);
       const [x, z] = p.at;
       const r = 1.6;
@@ -646,8 +665,6 @@ export class AreaView {
     add(pins, flatMat, true);
 
     for (const t of this.trees(decor)) group.add(t);
-    this.cars = decor.cars.length ? { mesh: this.carMesh(decor), decor } : null;
-    if (this.cars) group.add(this.cars.mesh);
     return group;
   }
 
@@ -684,51 +701,6 @@ export class AreaView {
     return [trunk, crown];
   }
 
-  private carMesh(decor: Decor): THREE.InstancedMesh {
-    // A body and a darker glass cabin, coloured per car.
-    const body = new THREE.BoxGeometry(4.2, 1.0, 1.8).translate(0, 0.7, 0);
-    const cabin = new THREE.BoxGeometry(2.3, 0.75, 1.6).translate(-0.25, 1.55, 0);
-    const shade = (g: THREE.BufferGeometry, k: number) => {
-      const n = g.getAttribute('position').count;
-      g.setAttribute('color', new THREE.Float32BufferAttribute(new Array(n * 3).fill(k), 3));
-      return g;
-    };
-    const parts = [shade(body, 1), shade(cabin, 0.32)];
-    const g = new THREE.BufferGeometry();
-    for (const name of ['position', 'normal', 'color'] as const) {
-      const arrays = parts.map((p) => (p.index ? p.toNonIndexed() : p).getAttribute(name).array as Float32Array);
-      const merged = new Float32Array(arrays.reduce((s, a) => s + a.length, 0));
-      let o = 0;
-      for (const a of arrays) {
-        merged.set(a, o);
-        o += a.length;
-      }
-      g.setAttribute(name, new THREE.BufferAttribute(merged, 3));
-    }
-    const mesh = new THREE.InstancedMesh(g, new THREE.MeshLambertMaterial({ vertexColors: true }), decor.cars.length);
-    decor.cars.forEach((c, i) => mesh.setColorAt(i, colorOf(CAR_COLORS[Math.floor(c.color * CAR_COLORS.length)])));
-    mesh.castShadow = true;
-    mesh.frustumCulled = false;
-    return mesh;
-  }
-
-  private moveCars(): void {
-    if (!this.cars) return;
-    const { mesh, decor } = this.cars;
-    const m = new THREE.Matrix4();
-    const q = new THREE.Quaternion();
-    const up = new THREE.Vector3(0, 1, 0);
-    const one = new THREE.Vector3(1, 1, 1);
-    const at = new THREE.Vector3();
-    decor.cars.forEach((c, i) => {
-      const p = carAt(c, this.clock);
-      q.setFromAxisAngle(up, -p.angle);
-      m.compose(at.set(p.x, 0.25, p.z), q, one);
-      mesh.setMatrixAt(i, m);
-    });
-    mesh.instanceMatrix.needsUpdate = true;
-  }
-
   private clear(): void {
     if (!this.content) return;
     this.scene.remove(this.content);
@@ -740,7 +712,6 @@ export class AreaView {
       }
     });
     this.content = null;
-    this.cars = null;
   }
 
   private loop = (now: number): void => {
@@ -748,7 +719,6 @@ export class AreaView {
     const dt = Math.min(0.1, (now - this.last) / 1000);
     this.last = now;
     if (!this.canvas.offsetParent) return; // hidden
-    this.clock += dt;
     const g = this.glide;
     if (g) {
       const k = Math.min(1, (now - g.start) / g.duration);
@@ -763,7 +733,6 @@ export class AreaView {
       if (k >= 1) this.glide = null;
     }
     this.controls.update(dt);
-    this.moveCars();
     // Keep the sun's shadow box over where the camera looks.
     const t = this.controls.target;
     const off = this.sun.position.clone().sub(this.sun.target.position);
@@ -771,7 +740,8 @@ export class AreaView {
     this.sun.position.copy(t).add(off);
     this.renderer.render(this.scene, this.camera);
     const v = viewAngles(this.camera.position, t);
-    const state = `${t.x.toFixed(1)},${t.z.toFixed(1)},${v.heading.toFixed(0)},${v.tilt.toFixed(0)}`;
+    // Distance too, so labels on screen follow a zoom.
+    const state = `${t.x.toFixed(1)},${t.z.toFixed(1)},${v.heading.toFixed(1)},${v.tilt.toFixed(1)},${this.camera.position.distanceTo(t).toFixed(1)}`;
     if (state !== this.lastState) {
       this.lastState = state;
       this.onViewChange({ target: [t.x, t.z], ...v });

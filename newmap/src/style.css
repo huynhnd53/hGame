@@ -415,7 +415,8 @@ kbd {
 .info {
   top: 14px;
   left: 14px;
-  max-width: min(460px, calc(100% - 260px));
+  /* Narrow enough to leave the middle of the scene (where the camera flies to) in view. */
+  max-width: min(300px, calc(50% - 60px));
   padding: 12px 16px;
   max-height: calc(100% - 120px);
   overflow-y: auto;
@@ -432,8 +433,96 @@ kbd {
   font-size: 13px;
 }
 
-.link {
+.links {
+  display: flex;
+  gap: 16px;
   margin-top: 6px;
+}
+
+#places {
+  margin-top: 10px;
+}
+
+#places-filter {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
+
+#places-list {
+  margin-top: 8px;
+  max-height: min(300px, 40vh);
+  overflow-y: auto;
+}
+
+#places-list h3 {
+  margin: 10px 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.place-item {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  text-align: left;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.place-item:hover,
+.place-item.current {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.place-item.current {
+  color: var(--accent);
+}
+
+.hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Name of the place the camera flew to, pinned over it in the scene. */
+.place-label {
+  position: absolute;
+  z-index: 1;
+  transform: translate(-50%, calc(-100% - 8px));
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(24, 27, 31, 0.92);
+  border: 1px solid var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.place-label::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 2px;
+  height: 7px;
+  background: var(--accent);
+  transform: translateX(-50%);
+}
+
+.link {
   padding: 0;
   border: 0;
   background: none;

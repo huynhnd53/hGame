@@ -63,7 +63,15 @@
         <div class="card info hidden" id="info">
           <h2 id="place-name"></h2>
           <p id="summary"></p>
-          <button class="link" id="btn-details" type="button" aria-expanded="false">Chi tiết</button>
+          <div class="links">
+            <button class="link" id="btn-places" type="button" aria-expanded="false">Địa điểm</button>
+            <button class="link" id="btn-details" type="button" aria-expanded="false">Chi tiết</button>
+          </div>
+          <div id="places" class="hidden">
+            <input type="search" id="places-filter" placeholder="Lọc theo tên…" aria-label="Lọc địa điểm" autocomplete="off" />
+            <div id="places-list" role="listbox" aria-label="Địa điểm trong khu"></div>
+            <p class="hint">Bấm một địa điểm để đưa camera tới đó. Bấm vào bản đồ bên trái cũng được.</p>
+          </div>
           <div id="details" class="hidden">
             <dl id="stats"></dl>
             <label class="check"><input type="checkbox" id="by-source" /> Tô màu nhà theo nguồn</label>
@@ -84,6 +92,8 @@
             </p>
           </div>
         </div>
+
+        <div class="place-label hidden" id="place-label" aria-live="polite"><span id="place-label-text"></span></div>
 
         <div class="card compass hidden" id="compass">
           <button class="needle-btn" id="btn-north" type="button" title="Quay về hướng Bắc" aria-label="Quay về hướng Bắc">

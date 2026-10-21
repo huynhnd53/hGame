@@ -10,9 +10,21 @@ export const FALLBACK_AFTER_MS = 7000;
 
 export type Tags = Record<string, string>;
 
-export type AreaKind = 'building' | 'water' | 'park' | 'worship' | 'heritage' | 'road';
+/** Public places worth flying the camera to: schools, markets, hospitals, offices, museums… */
+export const PLACE_AMENITY =
+  /^(school|university|college|kindergarten|hospital|clinic|marketplace|townhall|library|theatre|cinema|police|post_office|bus_station|community_centre|arts_centre)$/;
+export const PLACE_TOURISM = /^(museum|attraction|gallery|zoo|theme_park)$/;
+
+/** Category of a public place, from its tags, or null. */
+export function placeCategory(t: Tags): string | null {
+  if (t.amenity && PLACE_AMENITY.test(t.amenity)) return t.amenity;
+  if (t.tourism && PLACE_TOURISM.test(t.tourism)) return t.tourism;
+  return null;
+}
+
+export type AreaKind = 'building' | 'water' | 'park' | 'worship' | 'heritage' | 'amenity' | 'road';
 export type LineKind = 'road' | 'waterway' | 'barrier' | 'treeRow';
-export type PoiKind = 'worship' | 'heritage' | 'tree';
+export type PoiKind = 'worship' | 'heritage' | 'place' | 'tree';
 
 export interface Area {
   id: string;
@@ -88,6 +100,10 @@ export function buildQuery(polygon: LonLat[], timeoutS = 60): string {
     `  way["historic"]${p};`,
     `  way["barrier"~"^(wall|fence|city_wall|retaining_wall|hedge)$"]${p};`,
     `  node["natural"="tree"]${p};`,
+    `  node["amenity"~"${PLACE_AMENITY.source}"]["name"]${p};`,
+    `  way["amenity"~"${PLACE_AMENITY.source}"]${p};`,
+    `  node["tourism"~"${PLACE_TOURISM.source}"]["name"]${p};`,
+    `  way["tourism"~"${PLACE_TOURISM.source}"]${p};`,
     `  way["natural"="tree_row"]${p};`,
     ');',
     'out geom;',
@@ -102,6 +118,7 @@ export function areaKind(t: Tags): AreaKind | null {
   }
   if (t.amenity === 'place_of_worship') return 'worship';
   if (t.historic) return 'heritage';
+  if (placeCategory(t)) return 'amenity';
   if (
     /^(park|garden|playground|pitch|nature_reserve)$/.test(t.leisure ?? '') ||
     /^(grass|recreation_ground|village_green|forest|meadow|cemetery)$/.test(t.landuse ?? '') ||
@@ -165,7 +182,15 @@ export function parseOverpass(json: OverpassJson): OsmData {
     if (el.type === 'node') {
       if (el.lon === undefined || el.lat === undefined) continue;
       const kind: PoiKind | null =
-        tags.amenity === 'place_of_worship' ? 'worship' : tags.historic ? 'heritage' : tags.natural === 'tree' ? 'tree' : null;
+        tags.amenity === 'place_of_worship'
+          ? 'worship'
+          : tags.historic
+            ? 'heritage'
+            : tags.natural === 'tree'
+              ? 'tree'
+              : placeCategory(tags) && tags.name
+                ? 'place'
+                : null;
       if (kind) out.pois.push({ id, kind, at: [el.lon, el.lat], tags });
     } else if (el.type === 'way') {
       const pts = toLonLat(el.geometry);

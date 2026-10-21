@@ -43,9 +43,14 @@ hoặc lấy ô vuông 500 m giữa màn hình; vẽ xong vẫn kéo được c�
 
 Kiểu 3D: nhà có lưới cửa sổ, tường màu nhạt; nhà nhỏ mái dốc nhiều màu (mái hai dốc hoặc bốn dốc, theo `roof:shape` nếu
 có), nhà lớn mái bằng; đường nhựa có vỉa hè và vạch sơn (vạch giữa đứt, đường rộng có vạch làn), cây xanh (cây có trên
-OSM, thêm hàng cây ven đường lớn và cây trong công viên chỗ đất trống), xe chạy bên phải đường. Mặt trời theo giờ và
+OSM, thêm hàng cây ven đường lớn và cây trong công viên chỗ đất trống). Mặt trời theo giờ và
 ngày thật của khu (thanh giờ dưới cảnh, nút ▶ cho thời gian trôi), đổ bóng; tối thì cửa sổ sáng đèn. La bàn góc trên
-cho biết hướng nhìn và độ nghiêng (bấm để quay về hướng Bắc); chấm xanh trên bản đồ là chỗ camera đang nhìn. Kéo để
+cho biết hướng nhìn và độ nghiêng (bấm để quay về hướng Bắc); chấm xanh trên bản đồ là chỗ camera đang nhìn.
+
+Đưa camera tới địa điểm: mục **Địa điểm** trên thẻ tên khu liệt kê các nơi có tên trong khu (đình chùa, di tích,
+trường học, bệnh viện, chợ, cơ quan, công viên, hồ sông, toà nhà, đường phố), lọc được theo tên (gõ không dấu cũng
+được); bấm một nơi thì camera bay tới và hiện nhãn tên. Bấm vào bản đồ bên trái (trong khu đã dựng) hoặc chọn một kết
+quả tìm kiếm nằm trong khu cũng đưa camera tới đó. Kéo để
 xoay, chuột phải hoặc hai ngón để dời, lăn chuột hoặc chụm ngón để phóng; thanh nút bên phải (và phím ← → ↑ ↓ + − R F,
 Space) xoay từng nấc, nghiêng, phóng, tự xoay, về góc đầu, toàn màn hình.
 
@@ -75,7 +80,7 @@ Cách ghép hai nguồn nhà (`newmap/src/merge.ts`):
 
 Cấu trúc: `overpass.ts` (truy vấn, chọn máy, đọc kết quả), `nominatim.ts`, `openBuildings.ts` + `s2.ts` (đọc
 GeoParquet theo byte), `model.ts` (đổi sang mét, chiều cao, bề rộng đường), `merge.ts`, `pipeline.ts` (ghép cả quy
-trình), `decor.ts` (cây, xe), `sun.ts` (vị trí mặt trời), `scene3d.ts` (three.js), `mapView.ts` (Leaflet, vẽ khu),
+trình), `decor.ts` (cây), `places.ts` (danh sách địa điểm), `sun.ts` (vị trí mặt trời), `scene3d.ts` (three.js), `mapView.ts` (Leaflet, vẽ khu),
 `main.ts`. Nút *Tải dữ liệu khu (JSON)* xuất toàn bộ
 khu (toạ độ mét, x hướng đông, z hướng nam) để dùng tiếp, ví dụ đưa vào game.
 

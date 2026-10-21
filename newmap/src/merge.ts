@@ -143,6 +143,7 @@ export function footprintBuilding(id: string, fp: Footprint, outer: Ring, holes:
     role: 'house',
     confidence: fp.confidence,
     name: null,
+    category: null,
   };
 }
 

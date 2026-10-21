@@ -4,6 +4,8 @@ import type { DropReason } from './merge';
 import { searchPlaces, type SearchHit } from './nominatim';
 import { type BuildResult, buildArea } from './pipeline';
 import { AreaView } from './scene3d';
+import { pointInRing, type XZ } from './geo';
+import { filterPlaces, listPlaces, type Place, PLACE_GROUPS } from './places';
 import { compassName, compassShort, localToUtc, sunPosition, zoneOffsetHours } from './sun';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -25,6 +27,9 @@ const map = new MapView($('map'));
 let view: AreaView | null = null;
 let result: BuildResult | null = null;
 let decor: Decor | null = null;
+let places: Place[] = [];
+/** The spot the camera last flew to, with its label. */
+let pinned: { name: string; at: XZ; top: number; id: string } | null = null;
 let running: AbortController | null = null;
 /** The status line shows the result of the last build until the outline changes. */
 let builtOutline: unknown = null;
@@ -91,7 +96,6 @@ function showInfo(r: BuildResult, d: Decor, area: number, seconds: number): void
     `dựng xong trong ${fmtSeconds(seconds)} s`,
     `${nf.format(m.buildings.length)} nhà`,
     `${nf.format(d.trees.length)} cây`,
-    `${nf.format(d.cars.length)} xe`,
   ].join(' · ');
   const rows: [string, string][] = [
     ['Nhà OSM', nf.format(r.merge.osm)],
@@ -158,8 +162,67 @@ function ensureView(): AreaView {
     $('tilt').textContent = `nghiêng ${Math.round(v.tilt)}°`;
     $('needle').style.transform = `rotate(${-v.heading}deg)`;
     if (result) map.showViewTarget(result.projection.toLonLat(v.target));
+    placeLabel();
   };
   return view;
+}
+
+/** Keeps the name of the pinned place over it on screen. */
+function placeLabel(): void {
+  const el = $('place-label');
+  const p = pinned && view?.project(pinned.at, pinned.top);
+  if (!pinned || !p || p.x < 0 || p.y < 0 || p.x > canvas.clientWidth || p.y > canvas.clientHeight) {
+    el.classList.add('hidden');
+    return;
+  }
+  $('place-label-text').textContent = pinned.name;
+  el.style.left = `${p.x}px`;
+  el.style.top = `${p.y}px`;
+  el.classList.remove('hidden');
+}
+
+/** Flies the 3D camera to a spot in the built area and pins its name there. */
+function flyTo(name: string, at: XZ, size: number, top: number, id = ''): void {
+  if (!view) return;
+  pinned = name ? { name, at, top, id } : null;
+  view.flyTo(at, size);
+  placeLabel();
+  for (const b of $('places-list').querySelectorAll<HTMLElement>('.place-item')) b.classList.toggle('current', b.dataset.id === id);
+}
+
+function renderPlaces(): void {
+  const list = $('places-list');
+  const shown = filterPlaces(places, $<HTMLInputElement>('places-filter').value);
+  if (!shown.length) {
+    list.replaceChildren(Object.assign(document.createElement('p'), { className: 'hint', textContent: places.length ? 'Không có địa điểm nào khớp.' : 'Khu này chưa có địa điểm nào có tên trên OSM.' }));
+    return;
+  }
+  const nodes: HTMLElement[] = [];
+  for (const g of PLACE_GROUPS) {
+    const items = shown.filter((p) => p.group === g);
+    if (!items.length) continue;
+    nodes.push(Object.assign(document.createElement('h3'), { textContent: `${g} · ${items.length}` }));
+    for (const p of items) {
+      const b = Object.assign(document.createElement('button'), { type: 'button', className: 'place-item', textContent: p.name });
+      b.dataset.id = p.id;
+      b.setAttribute('role', 'option');
+      b.classList.toggle('current', pinned?.id === p.id);
+      b.addEventListener('click', () => {
+        flyTo(p.name, p.at, p.size, p.top, p.id);
+        // On a phone the list covers the scene, so get it out of the way.
+        if (matchMedia('(max-width: 760px)').matches) togglePanel('places');
+      });
+      nodes.push(b);
+    }
+  }
+  list.replaceChildren(...nodes);
+}
+
+/** The ground point of a lon/lat inside the built area, or null when outside it. */
+function inBuiltArea(lon: number, lat: number): XZ | null {
+  if (!result) return null;
+  const at = result.projection.toXZ([lon, lat]);
+  return pointInRing(at[0], at[1], result.model.boundary) ? at : null;
 }
 
 async function build(): Promise<void> {
@@ -183,10 +246,15 @@ async function build(): Promise<void> {
     v.show(r.model, d, { bySource: bySource.checked });
     updateSun();
     const seconds = (performance.now() - t0) / 1000;
-    log(`Xong sau ${fmtSeconds(seconds)} s: ${r.model.buildings.length} nhà, ${d.trees.length} cây, ${d.cars.length} xe.`);
+    log(`Xong sau ${fmtSeconds(seconds)} s: ${r.model.buildings.length} nhà, ${d.trees.length} cây.`);
     showInfo(r, d, map.area, seconds);
+    places = listPlaces(r.model);
+    pinned = null;
+    placeLabel();
+    $('btn-places').textContent = `Địa điểm (${places.length})`;
+    renderPlaces();
     builtOutline = poly;
-    done = `Đã dựng xong trong ${fmtSeconds(seconds)} s. Kéo cảnh bên phải để xoay.`;
+    done = `Đã dựng xong trong ${fmtSeconds(seconds)} s. Bấm vào bản đồ để đưa camera 3D tới đó.`;
     if (r.warnings.length) done += ` Có ${r.warnings.length} cảnh báo, xem Chi tiết.`;
   } catch (err) {
     if ((err as Error).name !== 'AbortError') {
@@ -321,6 +389,9 @@ function showHits(hits: SearchHit[]): void {
       li.append(h.name, Object.assign(document.createElement('small'), { textContent: h.detail }));
       li.addEventListener('click', () => {
         map.goTo(h.lat, h.lon, h.bbox);
+        // A place inside the built area: take the 3D camera there too.
+        const at = inBuiltArea(h.lon, h.lat);
+        if (at) flyTo(h.name, at, 40, 8);
         resultsEl.classList.add('hidden');
         searchInput.blur();
       });
@@ -353,11 +424,24 @@ $('btn-example').addEventListener('click', () => {
   map.setOutline(squareAround(105.8297, 21.0068, 980), true);
   void build();
 });
-$('btn-details').addEventListener('click', () => {
-  const open = !$('details').classList.toggle('hidden');
-  $('btn-details').setAttribute('aria-expanded', String(open));
-  $('btn-details').textContent = open ? 'Ẩn chi tiết' : 'Chi tiết';
-});
+/** Opens one of the two panels of the info card (places or details), closing the other. */
+function togglePanel(which: 'places' | 'details'): void {
+  const other = which === 'places' ? 'details' : 'places';
+  const open = !$(which).classList.toggle('hidden');
+  $(other).classList.add('hidden');
+  $(`btn-${which}`).setAttribute('aria-expanded', String(open));
+  $(`btn-${other}`).setAttribute('aria-expanded', 'false');
+  $('btn-details').textContent = which === 'details' && open ? 'Ẩn chi tiết' : 'Chi tiết';
+  if (which === 'places' && open) $('places-filter').focus();
+}
+$('btn-details').addEventListener('click', () => togglePanel('details'));
+$('btn-places').addEventListener('click', () => togglePanel('places'));
+$('places-filter').addEventListener('input', renderPlaces);
+// A click on the 2D map inside the built area takes the 3D camera there.
+map.onMapClick = ([lon, lat]) => {
+  const at = inBuiltArea(lon, lat);
+  if (at) flyTo('', at, 30, 0);
+};
 bySource.addEventListener('change', () => result && decor && view?.show(result.model, decor, { bySource: bySource.checked }));
 $('btn-json').addEventListener('click', downloadJson);
 refresh();

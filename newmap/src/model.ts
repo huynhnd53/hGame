@@ -1,5 +1,5 @@
 import { centroid, clipPolyline, type LocalProjection, pointInRing, polylineTouchesRing, type Ring, ringArea, type XZ } from './geo';
-import type { Area, Line, OsmData, Poi, Tags } from './overpass';
+import { type Area, type Line, type OsmData, type Poi, placeCategory, type Tags } from './overpass';
 
 /** Everything the 3D scene is built from, on the local ground plane in metres. */
 export interface SceneModel {
@@ -39,6 +39,8 @@ export interface SceneBuilding {
   role: 'house' | 'worship' | 'heritage';
   confidence: number | null;
   name: string | null;
+  /** What sort of public place it is (school, market…), if any. */
+  category: string | null;
 }
 
 /** A line with a width: a road or a river. */
@@ -51,6 +53,7 @@ export interface Corridor {
   hidden: boolean;
   /** Traffic only goes along the drawing direction. */
   oneway: boolean;
+  name: string | null;
 }
 
 export interface Surface {
@@ -58,6 +61,7 @@ export interface Surface {
   outer: Ring;
   holes: Ring[];
   kind: string;
+  name: string | null;
 }
 
 export interface Barrier {
@@ -71,7 +75,10 @@ export interface Barrier {
 export interface ScenePoi {
   id: string;
   at: XZ;
-  kind: 'worship' | 'heritage';
+  /** Temples and monuments get a marker; other public places are only listed. */
+  kind: 'worship' | 'heritage' | 'place';
+  /** What sort of place it is: an OSM amenity, tourism or historic value. */
+  category: string | null;
   name: string | null;
 }
 
@@ -203,6 +210,7 @@ export function osmBuilding(id: string, outer: Ring, holes: Ring[], t: Tags, foo
     role: role(t),
     confidence: null,
     name: t.name ?? null,
+    category: placeCategory(t),
   };
 }
 
@@ -236,11 +244,12 @@ export function osmToScene(osm: OsmData, boundary: Ring, p: LocalProjection): Sc
     }
     // Keep areas that reach into the drawn area or contain it whole (a big lake or park).
     if (!polylineTouchesRing([...outer, outer[0]], boundary) && !pointInRing(boundary[0][0], boundary[0][1], outer)) continue;
-    const s: Surface = { id: a.id, outer, holes, kind: a.tags.leisure ?? a.tags.landuse ?? a.tags.natural ?? a.kind };
+    const kind = placeCategory(a.tags) ?? a.tags.leisure ?? a.tags.landuse ?? a.tags.natural ?? a.kind;
+    const s: Surface = { id: a.id, outer, holes, kind, name: a.tags.name ?? null };
     if (a.kind === 'water') m.water.push(s);
     else if (a.kind === 'park') m.parks.push(s);
     else if (a.kind === 'road') m.roadAreas.push(s);
-    else m.yards.push({ ...s, kind: a.kind });
+    else m.yards.push({ ...s, kind: a.kind === 'amenity' ? kind : a.kind });
   }
   for (const l of osm.lines) addLine(m, l, p, boundary);
   for (const poi of osm.pois) addPoi(m, poi, p, boundary);
@@ -257,9 +266,17 @@ function addLine(m: SceneModel, l: Line, p: LocalProjection, boundary: Ring): vo
     const id = pieces.length > 1 ? `${l.id}#${i}` : l.id;
     if (l.kind === 'road') {
       const oneway = l.tags.oneway === 'yes' || l.tags.oneway === '1' || l.tags.junction === 'roundabout';
-      m.roads.push({ id, points, width: roadWidth(l.tags), kind: l.tags.highway, hidden: isOffGround(l.tags), oneway });
+      m.roads.push({ id, points, width: roadWidth(l.tags), kind: l.tags.highway, hidden: isOffGround(l.tags), oneway, name: l.tags.name ?? null });
     } else if (l.kind === 'waterway') {
-      m.waterways.push({ id, points, width: waterwayWidth(l.tags), kind: l.tags.waterway, hidden: isOffGround(l.tags), oneway: false });
+      m.waterways.push({
+        id,
+        points,
+        width: waterwayWidth(l.tags),
+        kind: l.tags.waterway,
+        hidden: isOffGround(l.tags),
+        oneway: false,
+        name: l.tags.name ?? null,
+      });
     } else if (l.kind === 'treeRow') {
       m.trees.push(...pointsAlong(points, 8));
     } else {
@@ -274,7 +291,10 @@ function addPoi(m: SceneModel, poi: Poi, p: LocalProjection, boundary: Ring): vo
   const at = p.toXZ(poi.at);
   if (!pointInRing(at[0], at[1], boundary)) return;
   if (poi.kind === 'tree') m.trees.push(at);
-  else m.pois.push({ id: poi.id, at, kind: poi.kind, name: poi.tags.name ?? null });
+  else {
+    const t = poi.tags;
+    m.pois.push({ id: poi.id, at, kind: poi.kind, category: placeCategory(t) ?? t.historic ?? t.amenity ?? null, name: t.name ?? null });
+  }
 }
 
 /** Points every `step` metres along a polyline, starting half a step in. */

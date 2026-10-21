@@ -57,12 +57,15 @@ export class MapView {
   /** The outline is a box, so dragging a corner keeps it a rectangle. */
   private isBox = false;
   private drag: Drag | null = null;
+  private dragEnded = 0;
   private readonly el: HTMLElement;
   private readonly shape: L.Polygon;
   private readonly corners = L.layerGroup();
   private viewMarker: L.CircleMarker | null = null;
   private basemap: L.TileLayer | null = null;
   onChange: () => void = () => {};
+  /** A click on the map while not drawing (used to fly the 3D camera there). */
+  onMapClick: (at: LonLat) => void = () => {};
 
   constructor(el: HTMLElement) {
     this.el = el;
@@ -76,6 +79,8 @@ export class MapView {
     // Keep Leaflet's idea of the map size right when the layout changes (styles arriving, phone rotation).
     new ResizeObserver(() => this.map.invalidateSize()).observe(el);
     this.map.on('click', (e: L.LeafletMouseEvent) => {
+      // The click that ends a box or corner drag is not a click on the map.
+      if (this.mode === 'idle' && performance.now() - this.dragEnded > 300) this.onMapClick([e.latlng.lng, e.latlng.lat]);
       if (this.mode !== 'polygon') return;
       this.points.push([e.latlng.lng, e.latlng.lat]);
       this.redraw();
@@ -172,6 +177,7 @@ export class MapView {
     const drag = this.drag;
     if (!drag) return;
     this.drag = null;
+    this.dragEnded = performance.now();
     if (this.el.hasPointerCapture(e.pointerId)) this.el.releasePointerCapture(e.pointerId);
     if (this.mode !== 'box') this.map.dragging.enable();
     if (drag.kind === 'box') {

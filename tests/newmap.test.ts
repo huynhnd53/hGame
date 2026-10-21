@@ -24,7 +24,8 @@ import {
 } from '../newmap/src/overpass';
 import { buildArea } from '../newmap/src/pipeline';
 import { cellContains, cellLevel, leafCellId, parseCellId } from '../newmap/src/s2';
-import { parseOsmColour } from '../newmap/src/scene3d';
+import * as THREE from 'three';
+import { MAX_POLAR, MIN_DISTANCE, parseOsmColour, turnCamera } from '../newmap/src/scene3d';
 
 const HANOI: LonLat = [105.8262, 21.0042];
 
@@ -287,6 +288,20 @@ describe('model', () => {
     const c = osmBuilding('way/3', ring, [], { building: 'yes' }, 75);
     expect(c.height / 3.2).toBe(guessLevels('way/3', 75));
     expect(osmBuilding('way/4', ring, [], { building: 'yes', amenity: 'place_of_worship' }, 75).role).toBe('worship');
+  });
+
+  it('turns, tilts and zooms the 3D camera around the middle of the area, within limits', () => {
+    const target = new THREE.Vector3(10, 0, 20);
+    const pos = new THREE.Vector3(10, 100, 120);
+    const turned = turnCamera(pos, target, { yaw: Math.PI / 2 });
+    expect(turned.distanceTo(target)).toBeCloseTo(pos.distanceTo(target));
+    expect(turned.y).toBeCloseTo(100);
+    expect(turned.x).toBeCloseTo(110);
+    expect(turned.z).toBeCloseTo(20);
+    // Tilting down stops before the horizon; zooming in stops at the minimum distance.
+    const low = turnCamera(pos, target, { pitch: -10 });
+    expect(Math.acos((low.y - target.y) / low.distanceTo(target))).toBeCloseTo(MAX_POLAR);
+    expect(turnCamera(pos, target, { zoom: 0.0001 }).distanceTo(target)).toBeCloseTo(MIN_DISTANCE);
   });
 
   it('parses OSM colours', () => {

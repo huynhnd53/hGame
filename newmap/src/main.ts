@@ -7,6 +7,7 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 
 const mapEl = $('map');
 const canvas = $<HTMLCanvasElement>('view');
+const viewWrap = $('view-wrap');
 const btnBox = $<HTMLButtonElement>('btn-box');
 const btnDraw = $<HTMLButtonElement>('btn-draw');
 const btnSquare = $<HTMLButtonElement>('btn-square');
@@ -52,7 +53,7 @@ function refresh(): void {
 
 function showMap(): void {
   mapEl.classList.remove('hidden');
-  canvas.classList.add('hidden');
+  viewWrap.classList.add('hidden');
   btnToggle.textContent = 'Xem 3D';
   map.map.invalidateSize();
 }
@@ -60,11 +61,60 @@ function showMap(): void {
 function show3D(): void {
   if (!result) return;
   mapEl.classList.add('hidden');
-  canvas.classList.remove('hidden');
+  viewWrap.classList.remove('hidden');
   btnToggle.textContent = 'Bản đồ';
-  view ??= new AreaView(canvas);
+  if (!view) {
+    view = new AreaView(canvas);
+    view.onSpinChange = (on) => spinBtn.classList.toggle('active', on);
+    // The hint fades once the view has been turned by hand.
+    canvas.addEventListener('pointerdown', () => $('view-hint').classList.add('faded'), { once: true });
+  }
   view.show(result.model, { bySource: bySource.checked });
 }
+
+const STEP = Math.PI / 8;
+const ACTIONS: Record<string, () => void> = {
+  left: () => view?.turn({ yaw: STEP }),
+  right: () => view?.turn({ yaw: -STEP }),
+  up: () => view?.turn({ pitch: STEP / 2 }),
+  down: () => view?.turn({ pitch: -STEP / 2 }),
+  in: () => view?.turn({ zoom: 0.7 }),
+  out: () => view?.turn({ zoom: 1 / 0.7 }),
+  spin: () => view?.setSpin(!view.spinning),
+  reset: () => view?.reset(),
+  full: () => {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void viewWrap.requestFullscreen?.();
+  },
+};
+const KEYS: Record<string, string> = {
+  ArrowLeft: 'left',
+  ArrowRight: 'right',
+  ArrowUp: 'up',
+  ArrowDown: 'down',
+  '+': 'in',
+  '=': 'in',
+  '-': 'out',
+  ' ': 'spin',
+  r: 'reset',
+  f: 'full',
+};
+const spinBtn = viewWrap.querySelector<HTMLButtonElement>('[data-act="spin"]')!;
+// Phones without fullscreen for elements (iPhone Safari) do not get the button.
+if (!document.fullscreenEnabled) viewWrap.querySelector('[data-act="full"]')?.remove();
+viewWrap.querySelector('.view-tools')!.addEventListener('click', (e) => {
+  const act = (e.target as HTMLElement).closest<HTMLElement>('[data-act]')?.dataset.act;
+  if (act) ACTIONS[act]?.();
+});
+window.addEventListener('keydown', (e) => {
+  const act = KEYS[e.key.length === 1 ? e.key.toLowerCase() : e.key];
+  if (!act || viewWrap.classList.contains('hidden') || e.ctrlKey || e.metaKey || e.altKey) return;
+  const target = e.target as HTMLElement;
+  // Space on a focused button already clicks it.
+  if (target.closest('input, textarea') || (act === 'spin' && target.closest('button'))) return;
+  e.preventDefault();
+  ACTIONS[act]();
+});
 
 const REASONS: Record<DropReason, string> = {
   lowConfidence: 'độ tin cậy dưới 0,7',
@@ -163,7 +213,7 @@ btnClear.addEventListener('click', () => {
   map.clear();
 });
 btnBuild.addEventListener('click', () => void build());
-btnToggle.addEventListener('click', () => (canvas.classList.contains('hidden') ? show3D() : showMap()));
+btnToggle.addEventListener('click', () => (viewWrap.classList.contains('hidden') ? show3D() : showMap()));
 bySource.addEventListener('change', () => result && view?.show(result.model, { bySource: bySource.checked }));
 $('btn-json').addEventListener('click', downloadJson);
 refresh();

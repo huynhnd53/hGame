@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { MapControls } from 'three/examples/jsm/controls/MapControls.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { centroid, type Ring, ringBounds, type XZ } from './geo';
 import { hash01, type SceneBuilding, type SceneModel } from './model';
 
@@ -169,15 +169,56 @@ export interface ViewOptions {
   bySource: boolean;
 }
 
-/** The 3D view of a built area: drag to pan, right-drag or two fingers to orbit, wheel or pinch to zoom. */
+/** Lowest and highest the camera may look from: never under the ground, at most straight down. */
+export const MIN_POLAR = 0.05;
+export const MAX_POLAR = Math.PI * 0.47;
+export const MIN_DISTANCE = 8;
+export const MAX_DISTANCE = 3000;
+
+export interface Turn {
+  /** Turn around the vertical axis, radians (positive turns the scene to the left). */
+  yaw?: number;
+  /** Tilt, radians (positive looks more from above). */
+  pitch?: number;
+  /** Distance factor (below 1 moves closer). */
+  zoom?: number;
+}
+
+/** Where the camera ends up after turning around `target`, kept within the view limits. */
+export function turnCamera(position: THREE.Vector3, target: THREE.Vector3, t: Turn): THREE.Vector3 {
+  const s = new THREE.Spherical().setFromVector3(position.clone().sub(target));
+  s.theta += t.yaw ?? 0;
+  s.phi = THREE.MathUtils.clamp(s.phi - (t.pitch ?? 0), MIN_POLAR, MAX_POLAR);
+  s.radius = THREE.MathUtils.clamp(s.radius * (t.zoom ?? 1), MIN_DISTANCE, MAX_DISTANCE);
+  return new THREE.Vector3().setFromSpherical(s).add(target);
+}
+
+interface Glide {
+  from: THREE.Spherical;
+  to: THREE.Spherical;
+  fromTarget: THREE.Vector3;
+  toTarget: THREE.Vector3;
+  start: number;
+  duration: number;
+}
+
+/**
+ * The 3D view of a built area. Drag to turn it, right-drag or two fingers to move it, wheel or pinch to zoom; the
+ * buttons turn, tilt and zoom in steps. It spins slowly when first shown, until it is touched.
+ */
 export class AreaView {
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
   private readonly camera = new THREE.PerspectiveCamera(50, 1, 0.5, 8000);
-  private readonly controls: MapControls;
+  private readonly controls: OrbitControls;
   private content: THREE.Group | null = null;
   private model: SceneModel | null = null;
+  private home: { position: THREE.Vector3; target: THREE.Vector3 } | null = null;
+  private glide: Glide | null = null;
   private frame = 0;
+  private last = 0;
+  /** Called when spinning starts or stops, to update the button. */
+  onSpinChange: (spinning: boolean) => void = () => {};
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -188,11 +229,23 @@ export class AreaView {
     const sun = new THREE.DirectionalLight(0xfff3dc, 1.8);
     sun.position.set(-300, 600, 200);
     this.scene.add(sun);
-    this.controls = new MapControls(this.camera, canvas);
-    this.controls.enableDamping = true;
-    this.controls.maxPolarAngle = Math.PI * 0.47;
-    this.controls.minDistance = 8;
-    this.controls.maxDistance = 3000;
+    const c = new OrbitControls(this.camera, canvas);
+    c.enableDamping = true;
+    c.minPolarAngle = MIN_POLAR;
+    c.maxPolarAngle = MAX_POLAR;
+    c.minDistance = MIN_DISTANCE;
+    c.maxDistance = MAX_DISTANCE;
+    // Move along the ground, not up into the sky.
+    c.screenSpacePanning = false;
+    c.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+    c.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+    c.autoRotateSpeed = 1.2;
+    // Any drag, pinch or wheel takes over from spinning and gliding.
+    c.addEventListener('start', () => {
+      this.glide = null;
+      this.setSpin(false);
+    });
+    this.controls = c;
     new ResizeObserver(() => this.resize()).observe(canvas);
     this.resize();
   }
@@ -211,8 +264,44 @@ export class AreaView {
     this.clear();
     this.content = buildGroup(model, opts);
     this.scene.add(this.content);
-    if (fresh) this.frameArea(model.boundary);
-    if (!this.frame) this.loop();
+    if (fresh) {
+      this.frameArea(model.boundary);
+      this.setSpin(true);
+    }
+    if (!this.frame) this.loop(performance.now());
+  }
+
+  get spinning(): boolean {
+    return this.controls.autoRotate;
+  }
+
+  setSpin(on: boolean): void {
+    if (this.controls.autoRotate === on) return;
+    this.controls.autoRotate = on;
+    this.onSpinChange(on);
+  }
+
+  /** Turns, tilts or zooms in a short glide. */
+  turn(t: Turn): void {
+    this.setSpin(false);
+    const target = this.controls.target.clone();
+    this.glideTo(turnCamera(this.camera.position, target, t), target);
+  }
+
+  /** Back to the view the area was first shown from. */
+  reset(): void {
+    if (!this.home) return;
+    this.setSpin(false);
+    this.glideTo(this.home.position, this.home.target);
+  }
+
+  private glideTo(position: THREE.Vector3, target: THREE.Vector3): void {
+    const from = new THREE.Spherical().setFromVector3(this.camera.position.clone().sub(this.controls.target));
+    const to = new THREE.Spherical().setFromVector3(position.clone().sub(target));
+    // Turn the short way round.
+    while (to.theta - from.theta > Math.PI) to.theta -= 2 * Math.PI;
+    while (to.theta - from.theta < -Math.PI) to.theta += 2 * Math.PI;
+    this.glide = { from, to, fromTarget: this.controls.target.clone(), toTarget: target.clone(), start: performance.now(), duration: 350 };
   }
 
   private frameArea(boundary: Ring): void {
@@ -222,6 +311,8 @@ export class AreaView {
     const r = Math.max(x1 - x0, z1 - z0, 80);
     this.controls.target.set(cx, 0, cz);
     this.camera.position.set(cx + r * 0.35, r * 0.75, cz + r * 0.85);
+    this.home = { position: this.camera.position.clone(), target: this.controls.target.clone() };
+    this.glide = null;
     this.controls.update();
   }
 
@@ -237,10 +328,25 @@ export class AreaView {
     this.content = null;
   }
 
-  private loop = (): void => {
+  private loop = (now: number): void => {
     this.frame = requestAnimationFrame(this.loop);
+    const dt = Math.min(0.1, (now - this.last) / 1000);
+    this.last = now;
     if (!this.canvas.offsetParent) return; // hidden behind the map
-    this.controls.update();
+    const g = this.glide;
+    if (g) {
+      const k = Math.min(1, (now - g.start) / g.duration);
+      const e = k * k * (3 - 2 * k);
+      const s = new THREE.Spherical(
+        THREE.MathUtils.lerp(g.from.radius, g.to.radius, e),
+        THREE.MathUtils.lerp(g.from.phi, g.to.phi, e),
+        THREE.MathUtils.lerp(g.from.theta, g.to.theta, e),
+      );
+      this.controls.target.lerpVectors(g.fromTarget, g.toTarget, e);
+      this.camera.position.setFromSpherical(s).add(this.controls.target);
+      if (k >= 1) this.glide = null;
+    }
+    this.controls.update(dt);
     this.renderer.render(this.scene, this.camera);
   };
 }

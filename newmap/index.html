@@ -22,7 +22,23 @@
     </header>
     <main>
       <div id="map"></div>
-      <canvas id="view" class="hidden"></canvas>
+      <div id="view-wrap" class="hidden">
+        <canvas id="view"></canvas>
+        <p class="view-hint" id="view-hint">
+          Kéo để xoay · chuột phải hoặc hai ngón để dời · lăn chuột hoặc chụm ngón để phóng to
+        </p>
+        <div class="view-tools" role="toolbar" aria-label="Điều khiển cảnh 3D">
+          <button class="vbtn" type="button" data-act="left" title="Xoay sang trái (phím ←)" aria-label="Xoay sang trái">⟲</button>
+          <button class="vbtn" type="button" data-act="right" title="Xoay sang phải (phím →)" aria-label="Xoay sang phải">⟳</button>
+          <button class="vbtn" type="button" data-act="up" title="Nhìn từ trên cao hơn (phím ↑)" aria-label="Nhìn từ trên cao hơn">▲</button>
+          <button class="vbtn" type="button" data-act="down" title="Nhìn ngang hơn (phím ↓)" aria-label="Nhìn ngang hơn">▼</button>
+          <button class="vbtn" type="button" data-act="in" title="Phóng to (phím +)" aria-label="Phóng to">+</button>
+          <button class="vbtn" type="button" data-act="out" title="Thu nhỏ (phím −)" aria-label="Thu nhỏ">−</button>
+          <button class="vbtn wide" type="button" data-act="spin" title="Tự xoay (phím Space)"><span class="long">Tự xoay</span><span class="short" aria-hidden="true">↻</span></button>
+          <button class="vbtn wide" type="button" data-act="reset" title="Về góc nhìn ban đầu (phím R)"><span class="long">Góc đầu</span><span class="short" aria-hidden="true">⌂</span></button>
+          <button class="vbtn" type="button" data-act="full" title="Toàn màn hình (phím F)" aria-label="Toàn màn hình">⛶</button>
+        </div>
+      </div>
       <aside id="side">
         <p id="hint">
           Bấm <b>Kéo khung</b> rồi kéo trên bản đồ để vẽ khung (hoặc giữ <kbd>Shift</kbd> và kéo). Muốn khu méo thì bấm

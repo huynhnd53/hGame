@@ -18,7 +18,7 @@
       <button class="btn ghost" id="btn-example" type="button">Ví dụ Khương Thượng</button>
     </header>
 
-    <main>
+    <main id="panes">
       <section class="pane map-pane">
         <div id="map"></div>
 
@@ -53,17 +53,36 @@
         </div>
       </section>
 
+      <div
+        class="splitter"
+        id="splitter"
+        role="separator"
+        tabindex="0"
+        aria-label="Kéo để đổi cỡ bản đồ và cảnh 3D (bấm đúp để về mặc định)"
+        title="Kéo để đổi cỡ hai bên · bấm đúp để về mặc định"
+        aria-valuemin="0"
+        aria-valuemax="100"
+      ><span></span></div>
+
       <section class="pane view-pane" id="view-wrap">
         <canvas id="view"></canvas>
         <div class="empty" id="empty">
-          <p>Vẽ một khu bên trái rồi bấm <b>Dựng khu này</b>.</p>
+          <p>Vẽ một khu trên bản đồ rồi bấm <b>Dựng khu này</b>.</p>
           <p class="muted">Hoặc bấm <b>Ví dụ Khương Thượng</b> ở góc trên.</p>
         </div>
 
         <div class="card info hidden" id="info">
           <h2 id="place-name"></h2>
           <p id="summary"></p>
-          <button class="link" id="btn-details" type="button" aria-expanded="false">Chi tiết</button>
+          <div class="links">
+            <button class="link" id="btn-places" type="button" aria-expanded="false">Địa điểm</button>
+            <button class="link" id="btn-details" type="button" aria-expanded="false">Chi tiết</button>
+          </div>
+          <div id="places" class="hidden">
+            <input type="search" id="places-filter" placeholder="Lọc theo tên…" aria-label="Lọc địa điểm" autocomplete="off" />
+            <div id="places-list" role="listbox" aria-label="Địa điểm trong khu"></div>
+            <p class="hint">Bấm một địa điểm để đưa camera tới đó. Bấm vào bản đồ bên trái cũng được.</p>
+          </div>
           <div id="details" class="hidden">
             <dl id="stats"></dl>
             <label class="check"><input type="checkbox" id="by-source" /> Tô màu nhà theo nguồn</label>
@@ -84,6 +103,8 @@
             </p>
           </div>
         </div>
+
+        <div class="place-label hidden" id="place-label" aria-live="polite"><span id="place-label-text"></span></div>
 
         <div class="card compass hidden" id="compass">
           <button class="needle-btn" id="btn-north" type="button" title="Quay về hướng Bắc" aria-label="Quay về hướng Bắc">

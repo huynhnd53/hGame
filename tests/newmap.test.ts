@@ -26,10 +26,12 @@ import { buildArea } from '../newmap/src/pipeline';
 import { cellContains, cellLevel, leafCellId, parseCellId } from '../newmap/src/s2';
 import * as THREE from 'three';
 import { MAX_POLAR, MIN_DISTANCE, orientedBox, parseOsmColour, roofStyle, turnCamera, viewAngles } from '../newmap/src/scene3d';
-import { carAt, makeCars, makeTrees, offsetPointsAlong } from '../newmap/src/decor';
+import { makeTrees, offsetPointsAlong } from '../newmap/src/decor';
 import { compassName, compassShort, localToUtc, sunPosition, zoneOffsetHours } from '../newmap/src/sun';
 import { pointsAlong } from '../newmap/src/model';
 import { searchPlaces } from '../newmap/src/nominatim';
+import { filterPlaces, groupOf, listPlaces } from '../newmap/src/places';
+import { clampSplit } from '../newmap/src/split';
 
 const HANOI: LonLat = [105.8262, 21.0042];
 
@@ -335,9 +337,9 @@ function testScene(): { m: SceneModel; p: LocalProjection } {
       [0, 10],
     ], [], { building: 'yes' }, 100),
   );
-  m.roads.push({ id: 'way/2', points: [[-100, 50], [100, 50]], width: 8, kind: 'residential', hidden: false, oneway: false });
-  m.roads.push({ id: 'way/3', points: [[-100, -50], [100, -50]], width: 8, kind: 'service', hidden: true, oneway: false });
-  m.water.push({ id: 'way/4', outer: [[-80, -80], [-40, -80], [-40, -40], [-80, -40]], holes: [], kind: 'water' });
+  m.roads.push({ id: 'way/2', points: [[-100, 50], [100, 50]], width: 8, kind: 'residential', hidden: false, oneway: false, name: null });
+  m.roads.push({ id: 'way/3', points: [[-100, -50], [100, -50]], width: 8, kind: 'service', hidden: true, oneway: false, name: null });
+  m.water.push({ id: 'way/4', outer: [[-80, -80], [-40, -80], [-40, -40], [-80, -40]], holes: [], kind: 'water', name: null });
   return { m, p };
 }
 
@@ -647,7 +649,7 @@ describe('3D look', () => {
   });
 });
 
-describe('trees and cars', () => {
+describe('trees', () => {
   it('spaces points along a line, and shifts them to its right', () => {
     const line: XZ[] = [
       [0, 0],
@@ -668,7 +670,7 @@ describe('trees and cars', () => {
   it('plants street and park trees only where the ground is free, plus the mapped ones', () => {
     const { m } = testScene();
     m.trees.push([70, 70]);
-    m.parks.push({ id: 'park', outer: [[30, -90], [90, -90], [90, -30], [30, -30]], holes: [], kind: 'park' });
+    m.parks.push({ id: 'park', outer: [[30, -90], [90, -90], [90, -30], [30, -30]], holes: [], kind: 'park', name: null });
     const occ = new Occupancy(m);
     const trees = makeTrees(m, occ);
     expect(trees.some((t) => t.at[0] === 70 && t.at[1] === 70)).toBe(true);
@@ -679,25 +681,6 @@ describe('trees and cars', () => {
       expect(Math.abs(x) <= 100 && Math.abs(z) <= 100).toBe(true);
     }
     expect(makeTrees(m, occ)).toEqual(trees);
-  });
-
-  it('puts cars on both sides of two-way roads, keeping right, and moves them along', () => {
-    const { m } = testScene();
-    const cars = makeCars(m);
-    // Only the visible residential road (200 m) gets cars, in both directions.
-    expect(cars.length).toBeGreaterThanOrEqual(8);
-    for (const c of cars) {
-      const p = carAt(c, 0);
-      expect(Math.abs(p.x)).toBeLessThanOrEqual(100.01);
-      // Eastbound cars drive south of the centre line (z > 50), westbound north of it.
-      const east = Math.cos(p.angle) > 0;
-      expect(east ? p.z > 50 : p.z < 50).toBe(true);
-      expect(Math.abs(Math.abs(p.z - 50) - 2)).toBeLessThan(1e-6);
-    }
-    const c = cars[0];
-    const a = carAt(c, 0);
-    const b = carAt(c, 1);
-    expect(Math.hypot(b.x - a.x, b.z - a.z)).toBeCloseTo(c.speed, 5);
   });
 });
 
@@ -750,5 +733,93 @@ describe('Overpass trees', () => {
     expect(m.trees.length).toBe(1 + 5);
     expect(m.pois).toEqual([]);
     expect(buildQuery(boundary.map((q) => p.toLonLat(q)))).toContain('"natural"="tree"');
+  });
+});
+
+describe('places to fly to', () => {
+  const sq = (x: number, z: number, d: number): XZ[] => [
+    [x, z],
+    [x + d, z],
+    [x + d, z + d],
+    [x, z + d],
+  ];
+
+  it('lists named temples, schools, parks, lakes, buildings and streets, grouped and without twins', () => {
+    const { m } = testScene();
+    m.buildings.push(osmBuilding('way/10', sq(20, 20, 15), [], { building: 'temple', amenity: 'place_of_worship', name: 'Chùa Bộc' }, 225));
+    m.yards.push({ id: 'way/11', outer: sq(15, 15, 30), holes: [], kind: 'worship', name: 'Chùa Bộc' });
+    m.buildings.push(osmBuilding('way/12', sq(-60, 10, 20), [], { building: 'school', amenity: 'school', name: 'Trường THCS Khương Thượng' }, 400));
+    m.buildings.push(osmBuilding('way/13', sq(60, -20, 10), [], { building: 'yes', name: 'Toà nhà A' }, 100));
+    m.pois.push({ id: 'node/14', at: [-20, -60], kind: 'place', category: 'marketplace', name: 'Chợ Khương Thượng' });
+    m.parks.push({ id: 'way/15', outer: sq(30, -90, 40), holes: [], kind: 'park', name: 'Vườn hoa' });
+    m.water[0].name = 'Hồ Ba Mẫu';
+    m.roads.push({ id: 'way/16', points: [[-100, 80], [0, 80]], width: 6, kind: 'residential', hidden: false, oneway: false, name: 'Phố Khương Thượng' });
+    m.roads.push({ id: 'way/17', points: [[0, 80], [30, 80]], width: 6, kind: 'residential', hidden: false, oneway: false, name: 'Phố Khương Thượng' });
+    const places = listPlaces(m);
+    expect(places.map((p) => `${p.group}: ${p.name}`)).toEqual([
+      'Đình, chùa, nhà thờ: Chùa Bộc',
+      'Trường học: Trường THCS Khương Thượng',
+      'Chợ: Chợ Khương Thượng',
+      'Công viên: Vườn hoa',
+      'Hồ, sông: Hồ Ba Mẫu',
+      'Toà nhà: Toà nhà A',
+      'Đường phố: Phố Khương Thượng',
+    ]);
+    // A street is placed at the middle of its longest stretch.
+    expect(places.find((p) => p.name === 'Phố Khương Thượng')!.at).toEqual([-50, 80]);
+    // The temple building is kept over its yard (same name, close by), and the label sits above its roof.
+    const temple = places[0];
+    expect(temple.id).toBe('way/10');
+    expect(temple.top).toBeGreaterThan(4);
+  });
+
+  it('groups public places by their OSM tags', () => {
+    expect(groupOf('kindergarten')).toBe('Trường học');
+    expect(groupOf('clinic')).toBe('Bệnh viện');
+    expect(groupOf('museum')).toBe('Cơ quan, công trình');
+    expect(groupOf('memorial')).toBe('Di tích');
+    expect(groupOf(null)).toBe('Toà nhà');
+  });
+
+  it('filters by name without caring about accents or case', () => {
+    const { m } = testScene();
+    m.pois.push({ id: 'node/1', at: [0, 0], kind: 'place', category: 'marketplace', name: 'Chợ Đồng Xuân' });
+    m.pois.push({ id: 'node/2', at: [50, 50], kind: 'place', category: 'school', name: 'Trường Kim Liên' });
+    const places = listPlaces(m);
+    expect(filterPlaces(places, 'dong xuan').map((p) => p.name)).toEqual(['Chợ Đồng Xuân']);
+    expect(filterPlaces(places, 'KIM LIÊN').map((p) => p.name)).toEqual(['Trường Kim Liên']);
+    expect(filterPlaces(places, '  ')).toHaveLength(2);
+  });
+
+  it('reads named schools, markets and museums from Overpass', () => {
+    const p = new LocalProjection(...HANOI);
+    const boundary: XZ[] = sq(-50, -50, 100);
+    const ll = (x: number, z: number) => p.toLonLat([x, z]);
+    const ring = (x: number, z: number) => [...sq(x, z, 10), [x, z] as XZ].map((q) => ll(...q)).map(([lon, lat]) => ({ lon, lat }));
+    const json: OverpassJson = {
+      elements: [
+        { type: 'node', id: 1, lon: ll(10, 10)[0], lat: ll(10, 10)[1], tags: { amenity: 'marketplace', name: 'Chợ' } },
+        { type: 'node', id: 2, lon: ll(20, 10)[0], lat: ll(20, 10)[1], tags: { amenity: 'school' } },
+        { type: 'way', id: 3, tags: { amenity: 'school', name: 'Trường' }, geometry: ring(-30, -30) },
+        { type: 'way', id: 4, tags: { tourism: 'museum', name: 'Bảo tàng', building: 'yes' }, geometry: ring(20, -30) },
+      ],
+    };
+    const m = osmToScene(parseOverpass(json), boundary, p);
+    expect(m.pois.map((q) => `${q.kind}:${q.category}:${q.name}`)).toEqual(['place:marketplace:Chợ']);
+    expect(m.yards.map((y) => `${y.kind}:${y.name}`)).toEqual(['school:Trường']);
+    expect(m.buildings.map((b) => `${b.category}:${b.name}`)).toEqual(['museum:Bảo tàng']);
+    expect(listPlaces(m).map((q) => q.group)).toEqual(['Trường học', 'Chợ', 'Cơ quan, công trình']);
+    expect(buildQuery(boundary.map((q) => p.toLonLat(q)))).toContain('"amenity"~"^(school|');
+  });
+});
+
+describe('splitter between map and 3D', () => {
+  it('shares the space but never squeezes a pane below its minimum', () => {
+    expect(clampSplit(600, 1200)).toBe(0.5);
+    expect(clampSplit(50, 1200)).toBeCloseTo(300 / 1200);
+    expect(clampSplit(1190, 1200)).toBeCloseTo(900 / 1200);
+    // A box too small for two minimum panes splits in the middle.
+    expect(clampSplit(10, 500)).toBe(0.5);
+    expect(clampSplit(10, 0)).toBe(0.5);
   });
 });

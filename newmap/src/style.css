@@ -117,15 +117,53 @@ svg {
 main {
   flex: 1;
   display: grid;
-  grid-template-columns: minmax(320px, 45%) 1fr;
-  gap: 4px;
+  /* --split is set by the splitter between the panes. */
+  grid-template-columns: var(--split, 45%) 10px minmax(0, 1fr);
   min-height: 0;
+  min-width: 0;
   background: var(--bg);
+}
+
+.splitter {
+  position: relative;
+  display: grid;
+  place-items: center;
+  cursor: col-resize;
+  touch-action: none;
+  background: var(--bg);
+  outline: none;
+}
+
+.splitter span {
+  width: 4px;
+  height: 44px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.22);
+  transition: background 0.15s, height 0.15s;
+}
+
+.splitter:hover span,
+.splitter:focus-visible span,
+.resizing .splitter span {
+  height: 72px;
+  background: var(--accent);
+}
+
+/* While dragging, the map and the 3D view must not take the pointer. */
+.resizing {
+  cursor: col-resize;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.resizing .pane {
+  pointer-events: none;
 }
 
 .pane {
   position: relative;
   min-height: 0;
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -415,7 +453,8 @@ kbd {
 .info {
   top: 14px;
   left: 14px;
-  max-width: min(460px, calc(100% - 260px));
+  /* Narrow enough to leave the middle of the scene (where the camera flies to) in view. */
+  max-width: min(300px, calc(50% - 60px));
   padding: 12px 16px;
   max-height: calc(100% - 120px);
   overflow-y: auto;
@@ -432,8 +471,96 @@ kbd {
   font-size: 13px;
 }
 
-.link {
+.links {
+  display: flex;
+  gap: 16px;
   margin-top: 6px;
+}
+
+#places {
+  margin-top: 10px;
+}
+
+#places-filter {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
+
+#places-list {
+  margin-top: 8px;
+  max-height: min(300px, 40vh);
+  overflow-y: auto;
+}
+
+#places-list h3 {
+  margin: 10px 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.place-item {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  text-align: left;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.place-item:hover,
+.place-item.current {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.place-item.current {
+  color: var(--accent);
+}
+
+.hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Name of the place the camera flew to, pinned over it in the scene. */
+.place-label {
+  position: absolute;
+  z-index: 1;
+  transform: translate(-50%, calc(-100% - 8px));
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(24, 27, 31, 0.92);
+  border: 1px solid var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.place-label::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 2px;
+  height: 7px;
+  background: var(--accent);
+  transform: translateX(-50%);
+}
+
+.link {
   padding: 0;
   border: 0;
   background: none;
@@ -705,6 +832,76 @@ kbd {
   height: 100vh;
 }
 
+/* Each pane rearranges its own overlays when the splitter makes it narrow. */
+.map-pane,
+.view-pane {
+  container-type: inline-size;
+}
+
+@container (max-width: 520px) {
+  .search {
+    right: 64px;
+  }
+
+  .search kbd {
+    display: none;
+  }
+
+  .map-tools {
+    top: 62px;
+    flex-direction: column;
+  }
+
+  .leaflet-top.leaflet-right {
+    margin-top: 214px;
+  }
+
+  .status-card {
+    flex-wrap: wrap;
+  }
+
+  .status-text p {
+    white-space: normal;
+  }
+}
+
+@container (max-width: 620px) {
+  .info {
+    max-width: calc(100% - 70px);
+  }
+
+  .compass {
+    top: auto;
+    bottom: 92px;
+    right: 8px;
+    padding: 4px 6px;
+  }
+
+  .compass-text {
+    display: none;
+  }
+
+  .view-tools {
+    top: 84px;
+    transform: none;
+  }
+
+  .timebar {
+    gap: 8px;
+    padding: 6px 8px;
+    flex-wrap: wrap;
+  }
+
+  .clock {
+    min-width: 0;
+  }
+
+  .clock span,
+  .ticks {
+    display: none;
+  }
+}
+
 /* Phones: map on top, 3D below */
 @media (max-width: 760px) {
   .tagline {
@@ -716,8 +913,28 @@ kbd {
   }
 
   main {
-    grid-template-columns: 1fr;
-    grid-template-rows: 44% 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: var(--split-stacked, 44%) 14px minmax(0, 1fr);
+  }
+
+  .splitter {
+    cursor: row-resize;
+  }
+
+  .splitter span {
+    width: 44px;
+    height: 4px;
+  }
+
+  .splitter:hover span,
+  .splitter:focus-visible span,
+  .resizing .splitter span {
+    width: 72px;
+    height: 4px;
+  }
+
+  .resizing {
+    cursor: row-resize;
   }
 
   .search {

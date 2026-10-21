@@ -21,6 +21,25 @@ export function squareAround(lon: number, lat: number, side: number): LonLat[] {
   ];
 }
 
+const OSM_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+
+/**
+ * Basemaps that need no API key, best first. OSM's own tiles are darkened with a CSS filter so the drawn area stands
+ * out; if they keep failing, Esri's dark grey canvas takes over.
+ */
+export const BASEMAPS = [
+  { url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', maxNativeZoom: 19, darken: true, attribution: OSM_ATTRIBUTION },
+  {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    maxNativeZoom: 16,
+    darken: false,
+    attribution: `${OSM_ATTRIBUTION}, &copy; Esri`,
+  },
+];
+
+/** Tiles that may fail before the next basemap is tried, if none has loaded. */
+const TILE_ERRORS_BEFORE_SWITCH = 6;
+
 /** How close (in screen pixels) a press must be to a corner to grab it. */
 const GRAB_PX = 16;
 
@@ -42,19 +61,14 @@ export class MapView {
   private readonly shape: L.Polygon;
   private readonly corners = L.layerGroup();
   private viewMarker: L.CircleMarker | null = null;
+  private basemap: L.TileLayer | null = null;
   onChange: () => void = () => {};
 
   constructor(el: HTMLElement) {
     this.el = el;
     // Shift-drag is ours (a box), not Leaflet's box zoom.
     this.map = L.map(el, { zoomControl: true, boxZoom: false }).setView(START, 16);
-    // Dark basemap so the drawn area stands out.
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 20,
-      subdomains: 'abcd',
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    }).addTo(this.map);
+    this.useBasemap(0);
     L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(this.map);
     this.map.zoomControl.setPosition('topright');
     this.shape = L.polygon([], { color: '#f08a5d', weight: 2, fillColor: '#e8734a', fillOpacity: 0.35, interactive: false }).addTo(this.map);
@@ -71,6 +85,24 @@ export class MapView {
     el.addEventListener('pointermove', (e) => this.onMove(e));
     el.addEventListener('pointerup', (e) => this.onUp(e));
     el.addEventListener('pointercancel', (e) => this.onUp(e));
+  }
+
+  /** Shows basemap `i`, moving on to the next one when its tiles fail to load. */
+  private useBasemap(i: number): void {
+    const b = BASEMAPS[i];
+    if (!b) return;
+    this.basemap?.remove();
+    this.el.classList.toggle('darken-tiles', b.darken);
+    const layer = L.tileLayer(b.url, { maxZoom: 20, maxNativeZoom: b.maxNativeZoom, attribution: b.attribution });
+    let loaded = 0;
+    let failed = 0;
+    layer.on('tileload', () => loaded++);
+    layer.on('tileerror', () => {
+      failed++;
+      if (!loaded && failed >= TILE_ERRORS_BEFORE_SWITCH && this.basemap === layer) this.useBasemap(i + 1);
+    });
+    this.basemap = layer.addTo(this.map);
+    layer.bringToBack();
   }
 
   private lonLatOf(e: PointerEvent): LonLat {

@@ -41,17 +41,23 @@ export class MapView {
   private readonly el: HTMLElement;
   private readonly shape: L.Polygon;
   private readonly corners = L.layerGroup();
+  private viewMarker: L.CircleMarker | null = null;
   onChange: () => void = () => {};
 
   constructor(el: HTMLElement) {
     this.el = el;
     // Shift-drag is ours (a box), not Leaflet's box zoom.
     this.map = L.map(el, { zoomControl: true, boxZoom: false }).setView(START, 16);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    // Dark basemap so the drawn area stands out.
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 20,
+      subdomains: 'abcd',
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
     }).addTo(this.map);
-    this.shape = L.polygon([], { color: '#d2562b', weight: 2, fillOpacity: 0.12, interactive: false }).addTo(this.map);
+    L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(this.map);
+    this.map.zoomControl.setPosition('topright');
+    this.shape = L.polygon([], { color: '#f08a5d', weight: 2, fillColor: '#e8734a', fillOpacity: 0.35, interactive: false }).addTo(this.map);
     this.corners.addTo(this.map);
     // Keep Leaflet's idea of the map size right when the layout changes (styles arriving, phone rotation).
     new ResizeObserver(() => this.map.invalidateSize()).observe(el);
@@ -124,7 +130,8 @@ export class MapView {
       this.points = boxFromCorners(this.points[(this.drag.index + 2) % 4], at);
       this.drag.index = this.points.findIndex((q) => q[0] === at[0] && q[1] === at[1]);
     } else {
-      this.points[this.drag.index] = at;
+      const index = this.drag.index;
+      this.points = this.points.map((q, i) => (i === index ? at : q));
     }
     this.redraw();
   }
@@ -182,6 +189,44 @@ export class MapView {
     this.redraw();
   }
 
+  /** Uses a given outline (a box when `box` is set) and shows it. */
+  setOutline(points: LonLat[], box: boolean): void {
+    this.points = points;
+    this.isBox = box;
+    this.finishDrawing();
+    this.map.fitBounds(
+      L.latLngBounds(points.map(([lon, lat]) => [lat, lon] as L.LatLngTuple)),
+      { padding: [60, 60] },
+    );
+  }
+
+  /** Shows where the 3D camera is looking, or hides the marker. */
+  showViewTarget(at: LonLat | null): void {
+    if (!at) {
+      this.viewMarker?.remove();
+      this.viewMarker = null;
+      return;
+    }
+    const ll: L.LatLngTuple = [at[1], at[0]];
+    if (this.viewMarker) this.viewMarker.setLatLng(ll);
+    else {
+      this.viewMarker = L.circleMarker(ll, {
+        radius: 6,
+        color: '#0b2e1f',
+        weight: 3,
+        fillColor: '#3ccf8e',
+        fillOpacity: 1,
+        interactive: false,
+      }).addTo(this.map);
+    }
+  }
+
+  /** Moves the map to a search result. */
+  goTo(lat: number, lon: number, bbox?: [number, number, number, number]): void {
+    if (bbox) this.map.flyToBounds([[bbox[0], bbox[2]], [bbox[1], bbox[3]]], { maxZoom: 17, duration: 0.8 });
+    else this.map.flyTo([lat, lon], 17, { duration: 0.8 });
+  }
+
   /** Uses a square of `side` metres around the middle of the current view. */
   squareHere(side: number): void {
     const c = this.map.getCenter();
@@ -228,8 +273,8 @@ export class MapView {
         const first = this.mode === 'polygon' && i === 0;
         const m = L.circleMarker([lat, lon], {
           radius: first || this.closed ? 7 : 4,
-          color: '#d2562b',
-          fillColor: first || this.closed ? '#fff' : '#d2562b',
+          color: '#f08a5d',
+          fillColor: first || this.closed ? '#fff' : '#f08a5d',
           fillOpacity: 1,
           weight: 2,
           // Corners of a finished outline are moved by the pointer handlers above, not by Leaflet.

@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { areaM2, boxFromCorners, clipPolyline, LocalProjection, type LonLat, pointInRing, samplePoints, type XZ } from '../newmap/src/geo';
-import { mergeFootprints, MIN_CONFIDENCE } from '../newmap/src/merge';
+import { mergeFootprints, MIN_CONFIDENCE, Occupancy } from '../newmap/src/merge';
 import { guessLevels, osmBuilding, osmToScene, parseLength, roadWidth, type SceneModel } from '../newmap/src/model';
 import { iso3, placeName } from '../newmap/src/nominatim';
 import {
@@ -25,7 +25,11 @@ import {
 import { buildArea } from '../newmap/src/pipeline';
 import { cellContains, cellLevel, leafCellId, parseCellId } from '../newmap/src/s2';
 import * as THREE from 'three';
-import { MAX_POLAR, MIN_DISTANCE, parseOsmColour, turnCamera } from '../newmap/src/scene3d';
+import { MAX_POLAR, MIN_DISTANCE, orientedBox, parseOsmColour, roofStyle, turnCamera, viewAngles } from '../newmap/src/scene3d';
+import { carAt, makeCars, makeTrees, offsetPointsAlong } from '../newmap/src/decor';
+import { compassName, compassShort, localToUtc, sunPosition, zoneOffsetHours } from '../newmap/src/sun';
+import { pointsAlong } from '../newmap/src/model';
+import { searchPlaces } from '../newmap/src/nominatim';
 
 const HANOI: LonLat = [105.8262, 21.0042];
 
@@ -331,8 +335,8 @@ function testScene(): { m: SceneModel; p: LocalProjection } {
       [0, 10],
     ], [], { building: 'yes' }, 100),
   );
-  m.roads.push({ id: 'way/2', points: [[-100, 50], [100, 50]], width: 8, kind: 'residential', hidden: false });
-  m.roads.push({ id: 'way/3', points: [[-100, -50], [100, -50]], width: 8, kind: 'service', hidden: true });
+  m.roads.push({ id: 'way/2', points: [[-100, 50], [100, 50]], width: 8, kind: 'residential', hidden: false, oneway: false });
+  m.roads.push({ id: 'way/3', points: [[-100, -50], [100, -50]], width: 8, kind: 'service', hidden: true, oneway: false });
   m.water.push({ id: 'way/4', outer: [[-80, -80], [-40, -80], [-40, -40], [-80, -40]], holes: [], kind: 'water' });
   return { m, p };
 }
@@ -576,5 +580,175 @@ describe('Dựng khu này', () => {
     expect(r.merge.dropped.lowConfidence).toBe(3);
     expect(r.merge.kept).toBe(7);
     expect(r.warnings).toEqual([]);
+  });
+});
+
+describe('sun', () => {
+  // Reference values from the suncalc package for Khương Thượng.
+  const at = (date: string, minutes: number) => sunPosition(localToUtc(date, minutes, 7), 21.006, 105.828);
+
+  it('matches reference positions within a degree', () => {
+    const afternoon = at('2026-10-21', 15 * 60);
+    expect(afternoon.altitude).toBeCloseTo(31.8, 0);
+    expect(afternoon.azimuth).toBeCloseTo(241.8, 0);
+    expect(at('2026-06-21', 12 * 60).altitude).toBeCloseTo(87.5, 0);
+    expect(at('2026-10-21', 22 * 60).altitude).toBeLessThan(-30);
+  });
+
+  it('works out the local time zone and names directions', () => {
+    expect(zoneOffsetHours(105.8)).toBe(7);
+    expect(zoneOffsetHours(-0.1)).toBe(0);
+    expect(localToUtc('2026-10-21', 15 * 60, 7)).toBe(Date.UTC(2026, 9, 21, 8));
+    expect(compassName(225)).toBe('Tây Nam');
+    expect(compassName(359)).toBe('Bắc');
+    expect(compassShort(20)).toBe('20° B');
+    expect(compassShort(135)).toBe('135° ĐN');
+    expect(compassShort(359.7)).toBe('0° B');
+  });
+});
+
+describe('3D look', () => {
+  const house = (id: string, ring: XZ[], tags: Record<string, string> = {}) => osmBuilding(id, ring, [], { building: 'yes', ...tags }, 0);
+  const rect = (w: number, d: number, a = 0): XZ[] =>
+    (
+      [
+        [0, 0],
+        [w, 0],
+        [w, d],
+        [0, d],
+      ] as XZ[]
+    ).map(([x, z]) => [x * Math.cos(a) - z * Math.sin(a), x * Math.sin(a) + z * Math.cos(a)]);
+
+  it('finds the oriented box of a turned footprint', () => {
+    const o = orientedBox(rect(16, 5, 0.6));
+    expect(o.halfLong).toBeCloseTo(8);
+    expect(o.halfShort).toBeCloseTo(2.5);
+    expect(Math.abs(o.ux * Math.cos(0.6) + o.uz * Math.sin(0.6))).toBeCloseTo(1);
+  });
+
+  it('keeps mapped roofs, and gives small unmapped houses pitched roofs more often than not', () => {
+    expect(roofStyle(house('a', rect(6, 12), { 'roof:shape': 'gabled' }))).toBe('gabled');
+    expect(roofStyle(house('b', rect(6, 12), { 'roof:shape': 'pyramidal' }))).toBe('hipped');
+    expect(roofStyle(house('c', rect(6, 12), { 'roof:shape': 'flat' }))).toBe('flat');
+    expect(roofStyle(house('d', rect(40, 30)))).toBe('flat');
+    const styles = Array.from({ length: 200 }, (_, i) => roofStyle(house(`way/${i}`, rect(5, 14))));
+    const pitched = styles.filter((st) => st !== 'flat').length;
+    expect(pitched).toBeGreaterThan(110);
+    expect(pitched).toBeLessThan(170);
+  });
+
+  it('reports the compass heading and tilt of the camera', () => {
+    const target = new THREE.Vector3(0, 0, 0);
+    // Camera south of the target, looking north.
+    expect(viewAngles(new THREE.Vector3(0, 100, 100), target).heading).toBeCloseTo(0);
+    expect(viewAngles(new THREE.Vector3(0, 100, 100), target).tilt).toBeCloseTo(45);
+    // Camera west of the target, looking east.
+    expect(viewAngles(new THREE.Vector3(-100, 50, 0), target).heading).toBeCloseTo(90);
+  });
+});
+
+describe('trees and cars', () => {
+  it('spaces points along a line, and shifts them to its right', () => {
+    const line: XZ[] = [
+      [0, 0],
+      [20, 0],
+    ];
+    expect(pointsAlong(line, 8)).toEqual([
+      [4, 0],
+      [12, 0],
+      [20, 0],
+    ]);
+    // Going east (+x), the right is south (+z).
+    expect(offsetPointsAlong(line, 10, 3)).toEqual([
+      [5, 3],
+      [15, 3],
+    ]);
+  });
+
+  it('plants street and park trees only where the ground is free, plus the mapped ones', () => {
+    const { m } = testScene();
+    m.trees.push([70, 70]);
+    m.parks.push({ id: 'park', outer: [[30, -90], [90, -90], [90, -30], [30, -30]], holes: [], kind: 'park' });
+    const occ = new Occupancy(m);
+    const trees = makeTrees(m, occ);
+    expect(trees.some((t) => t.at[0] === 70 && t.at[1] === 70)).toBe(true);
+    expect(trees.length).toBeGreaterThan(20);
+    for (const t of trees.slice(1)) {
+      const [x, z] = t.at;
+      expect(occ.inBuilding(x, z) || occ.onRoad(x, z) || occ.onWater(x, z)).toBe(false);
+      expect(Math.abs(x) <= 100 && Math.abs(z) <= 100).toBe(true);
+    }
+    expect(makeTrees(m, occ)).toEqual(trees);
+  });
+
+  it('puts cars on both sides of two-way roads, keeping right, and moves them along', () => {
+    const { m } = testScene();
+    const cars = makeCars(m);
+    // Only the visible residential road (200 m) gets cars, in both directions.
+    expect(cars.length).toBeGreaterThanOrEqual(8);
+    for (const c of cars) {
+      const p = carAt(c, 0);
+      expect(Math.abs(p.x)).toBeLessThanOrEqual(100.01);
+      // Eastbound cars drive south of the centre line (z > 50), westbound north of it.
+      const east = Math.cos(p.angle) > 0;
+      expect(east ? p.z > 50 : p.z < 50).toBe(true);
+      expect(Math.abs(Math.abs(p.z - 50) - 2)).toBeLessThan(1e-6);
+    }
+    const c = cars[0];
+    const a = carAt(c, 0);
+    const b = carAt(c, 1);
+    expect(Math.hypot(b.x - a.x, b.z - a.z)).toBeCloseTo(c.speed, 5);
+  });
+});
+
+describe('place search', () => {
+  it('turns Nominatim hits into names, details and bounds', async () => {
+    const f = vi.fn(async (url: string | URL | Request) => {
+      const u = new URL(String(url));
+      expect(u.searchParams.get('q')).toBe('Hồ Gươm');
+      return new Response(
+        JSON.stringify([
+          {
+            name: 'Hồ Hoàn Kiếm',
+            display_name: 'Hồ Hoàn Kiếm, Hàng Trống, Hoàn Kiếm, Hà Nội, Việt Nam',
+            lat: '21.0287',
+            lon: '105.8524',
+            boundingbox: ['21.024', '21.033', '105.850', '105.854'],
+          },
+        ]),
+      );
+    }) as unknown as typeof fetch;
+    const [hit] = await searchPlaces('Hồ Gươm', f);
+    expect(hit.name).toBe('Hồ Hoàn Kiếm');
+    expect(hit.detail).toBe('Hàng Trống, Hoàn Kiếm, Hà Nội, Việt Nam');
+    expect(hit.bbox).toEqual([21.024, 21.033, 105.85, 105.854]);
+  });
+});
+
+describe('Overpass trees', () => {
+  it('reads single trees and tree rows into the scene', () => {
+    const p = new LocalProjection(...HANOI);
+    const boundary: XZ[] = [
+      [-50, -50],
+      [50, -50],
+      [50, 50],
+      [-50, 50],
+    ];
+    const ll = (x: number, z: number) => p.toLonLat([x, z]);
+    const json: OverpassJson = {
+      elements: [
+        { type: 'node', id: 1, lon: ll(10, 10)[0], lat: ll(10, 10)[1], tags: { natural: 'tree' } },
+        {
+          type: 'way',
+          id: 2,
+          tags: { natural: 'tree_row' },
+          geometry: [ll(-40, 0), ll(0, 0)].map(([lon, lat]) => ({ lon, lat })),
+        },
+      ],
+    };
+    const m = osmToScene(parseOverpass(json), boundary, p);
+    expect(m.trees.length).toBe(1 + 5);
+    expect(m.pois).toEqual([]);
+    expect(buildQuery(boundary.map((q) => p.toLonLat(q)))).toContain('"natural"="tree"');
   });
 });

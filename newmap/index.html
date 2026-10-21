@@ -3,71 +3,122 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#1f2a30" />
+    <meta name="theme-color" content="#121417" />
     <title>Dựng khu thật · Vgang Online</title>
     <link rel="stylesheet" href="./src/style.css" />
   </head>
   <body>
     <header class="bar">
-      <a class="home" href="../">← Vgang</a>
+      <a class="home" href="../" title="Về game Vgang" aria-label="Về game Vgang">←</a>
+      <svg class="logo" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 2 21 7v10l-9 5-9-5V7z M3 7l9 5 9-5 M12 12v10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+      </svg>
       <h1>Dựng khu thật</h1>
-      <div class="tools">
-        <button class="btn" id="btn-box" type="button">Kéo khung</button>
-        <button class="btn" id="btn-draw" type="button">Vẽ khu</button>
-        <button class="btn" id="btn-square" type="button">Khung 500 m</button>
-        <button class="btn" id="btn-clear" type="button">Xoá</button>
-        <button class="btn primary" id="btn-build" type="button" disabled>Dựng khu này</button>
-        <button class="btn" id="btn-toggle" type="button" disabled>Xem 3D</button>
-      </div>
+      <span class="tagline">Vẽ một khu, dựng thành mô hình 3D</span>
+      <button class="btn ghost" id="btn-example" type="button">Ví dụ Khương Thượng</button>
     </header>
+
     <main>
-      <div id="map"></div>
-      <div id="view-wrap" class="hidden">
+      <section class="pane map-pane">
+        <div id="map"></div>
+
+        <form class="search" id="search" role="search" autocomplete="off">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8" /><path d="m16 16 4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
+          <input id="search-input" type="search" placeholder="Tìm địa điểm" aria-label="Tìm địa điểm" />
+          <kbd>/</kbd>
+          <ul id="search-results" class="results hidden" role="listbox"></ul>
+        </form>
+
+        <div class="map-tools" role="toolbar" aria-label="Vẽ khu">
+          <button class="tool" id="btn-box" type="button" title="Kéo khung: kéo trên bản đồ (hoặc giữ Shift và kéo)" aria-label="Kéo khung">
+            <svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.8" /></svg>
+          </button>
+          <button class="tool" id="btn-draw" type="button" title="Vẽ khu: chấm từng góc, bấm lại góc đầu để khép" aria-label="Vẽ khu">
+            <svg viewBox="0 0 24 24"><path d="M12 3.5 20.5 9.7 17.3 19.5H6.7L3.5 9.7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" /></svg>
+          </button>
+          <button class="tool" id="btn-square" type="button" title="Ô vuông 500 m giữa màn hình" aria-label="Ô vuông 500 m">
+            <svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="3 2" /><circle cx="12" cy="12" r="1.6" fill="currentColor" /></svg>
+          </button>
+          <button class="tool" id="btn-clear" type="button" title="Xoá khu đã vẽ" aria-label="Xoá">
+            <svg viewBox="0 0 24 24"><path d="M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" /></svg>
+          </button>
+        </div>
+
+        <div class="status-card">
+          <div class="status-text">
+            <b><span class="dot" id="status-dot"></span><span id="area-title">Chưa vẽ khu</span></b>
+            <p id="status">Bấm nút khung rồi kéo trên bản đồ, hoặc giữ Shift và kéo.</p>
+          </div>
+          <button class="btn primary" id="btn-build" type="button" disabled>Dựng khu này</button>
+        </div>
+      </section>
+
+      <section class="pane view-pane" id="view-wrap">
         <canvas id="view"></canvas>
-        <p class="view-hint" id="view-hint">
-          Kéo để xoay · chuột phải hoặc hai ngón để dời · lăn chuột hoặc chụm ngón để phóng to
-        </p>
-        <div class="view-tools" role="toolbar" aria-label="Điều khiển cảnh 3D">
-          <button class="vbtn" type="button" data-act="left" title="Xoay sang trái (phím ←)" aria-label="Xoay sang trái">⟲</button>
-          <button class="vbtn" type="button" data-act="right" title="Xoay sang phải (phím →)" aria-label="Xoay sang phải">⟳</button>
-          <button class="vbtn" type="button" data-act="up" title="Nhìn từ trên cao hơn (phím ↑)" aria-label="Nhìn từ trên cao hơn">▲</button>
-          <button class="vbtn" type="button" data-act="down" title="Nhìn ngang hơn (phím ↓)" aria-label="Nhìn ngang hơn">▼</button>
+        <div class="empty" id="empty">
+          <p>Vẽ một khu bên trái rồi bấm <b>Dựng khu này</b>.</p>
+          <p class="muted">Hoặc bấm <b>Ví dụ Khương Thượng</b> ở góc trên.</p>
+        </div>
+
+        <div class="card info hidden" id="info">
+          <h2 id="place-name"></h2>
+          <p id="summary"></p>
+          <button class="link" id="btn-details" type="button" aria-expanded="false">Chi tiết</button>
+          <div id="details" class="hidden">
+            <dl id="stats"></dl>
+            <label class="check"><input type="checkbox" id="by-source" /> Tô màu nhà theo nguồn</label>
+            <ul class="legend">
+              <li><i style="background: #e07a3f"></i>OSM</li>
+              <li><i style="background: #3f9b5a"></i>Google</li>
+              <li><i style="background: #3f74c9"></i>Microsoft</li>
+            </ul>
+            <details id="log-box">
+              <summary>Nhật ký</summary>
+              <ol id="log"></ol>
+            </details>
+            <p class="credits">
+              Dữ liệu: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>
+              (Overpass, Nominatim);
+              <a href="https://source.coop/vida/google-microsoft-open-buildings" target="_blank" rel="noopener">Google-Microsoft Open Buildings</a>
+              gộp bởi VIDA; nền bản đồ © CARTO. Trình duyệt gọi thẳng các nguồn này, không qua máy chủ nào khác.
+            </p>
+          </div>
+        </div>
+
+        <div class="card compass hidden" id="compass">
+          <button class="needle-btn" id="btn-north" type="button" title="Quay về hướng Bắc" aria-label="Quay về hướng Bắc">
+            <svg viewBox="0 0 24 24" id="needle"><path d="M12 2.5 15 12h-6z" fill="#e8553a" /><path d="M12 21.5 9 12h6z" fill="#c9ccd1" /></svg>
+          </button>
+          <div class="compass-text"><b id="heading">0° B</b><span id="tilt">nghiêng 0°</span></div>
+          <button class="icon-btn" id="btn-json" type="button" title="Tải dữ liệu khu (JSON)" aria-label="Tải dữ liệu khu">
+            <svg viewBox="0 0 24 24"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
+          </button>
+        </div>
+
+        <div class="view-tools hidden" id="view-tools" role="toolbar" aria-label="Điều khiển cảnh 3D">
           <button class="vbtn" type="button" data-act="in" title="Phóng to (phím +)" aria-label="Phóng to">+</button>
           <button class="vbtn" type="button" data-act="out" title="Thu nhỏ (phím −)" aria-label="Thu nhỏ">−</button>
-          <button class="vbtn wide" type="button" data-act="spin" title="Tự xoay (phím Space)"><span class="long">Tự xoay</span><span class="short" aria-hidden="true">↻</span></button>
-          <button class="vbtn wide" type="button" data-act="reset" title="Về góc nhìn ban đầu (phím R)"><span class="long">Góc đầu</span><span class="short" aria-hidden="true">⌂</span></button>
+          <button class="vbtn" type="button" data-act="left" title="Xoay sang trái (phím ←)" aria-label="Xoay sang trái">⟲</button>
+          <button class="vbtn" type="button" data-act="right" title="Xoay sang phải (phím →)" aria-label="Xoay sang phải">⟳</button>
+          <button class="vbtn" type="button" data-act="up" title="Nhìn từ trên cao hơn (phím ↑)" aria-label="Nhìn từ trên cao hơn">▴</button>
+          <button class="vbtn" type="button" data-act="down" title="Nhìn ngang hơn (phím ↓)" aria-label="Nhìn ngang hơn">▾</button>
+          <button class="vbtn" type="button" data-act="spin" title="Tự xoay (phím Space)" aria-label="Tự xoay">↻</button>
+          <button class="vbtn" type="button" data-act="reset" title="Về góc nhìn ban đầu (phím R)" aria-label="Về góc nhìn ban đầu">⌂</button>
           <button class="vbtn" type="button" data-act="full" title="Toàn màn hình (phím F)" aria-label="Toàn màn hình">⛶</button>
         </div>
-      </div>
-      <aside id="side">
-        <p id="hint">
-          Bấm <b>Kéo khung</b> rồi kéo trên bản đồ để vẽ khung (hoặc giữ <kbd>Shift</kbd> và kéo). Muốn khu méo thì bấm
-          <b>Vẽ khu</b>, chấm từng góc, bấm lại góc đầu để khép. <b>Khung 500 m</b> lấy ô vuông giữa màn hình. Vẽ xong vẫn
-          kéo được các góc để chỉnh.
-        </p>
-        <p id="area"></p>
-        <div id="result" class="hidden">
-          <h2 id="place-name"></h2>
-          <dl id="stats"></dl>
-          <label class="check"><input type="checkbox" id="by-source" /> Tô màu nhà theo nguồn</label>
-          <ul class="legend">
-            <li><i style="background: #e07a3f"></i>OSM</li>
-            <li><i style="background: #3f9b5a"></i>Google</li>
-            <li><i style="background: #3f74c9"></i>Microsoft</li>
-          </ul>
-          <button class="btn" id="btn-json" type="button">Tải dữ liệu khu (JSON)</button>
+
+        <div class="card timebar hidden" id="timebar">
+          <button class="play" id="btn-play" type="button" title="Cho thời gian trôi" aria-label="Cho thời gian trôi">
+            <svg viewBox="0 0 24 24" id="play-icon"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor" /></svg>
+          </button>
+          <div class="clock"><b id="clock">15:00</b><span id="sun-text"></span></div>
+          <div class="slider">
+            <input type="range" id="time" min="0" max="1440" step="5" value="900" aria-label="Giờ trong ngày" />
+            <div class="ticks" aria-hidden="true"><span>0h</span><span>6h</span><span>12h</span><span>18h</span><span>24h</span></div>
+          </div>
+          <input type="date" id="date" aria-label="Ngày" />
         </div>
-        <details id="log-box" open>
-          <summary>Nhật ký</summary>
-          <ol id="log"></ol>
-        </details>
-        <p class="credits">
-          Dữ liệu: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>
-          (Overpass, Nominatim);
-          <a href="https://source.coop/vida/google-microsoft-open-buildings" target="_blank" rel="noopener">Google-Microsoft Open Buildings</a>
-          gộp bởi VIDA. Trình duyệt gọi thẳng các nguồn này, không qua máy chủ nào khác.
-        </p>
-      </aside>
+      </section>
     </main>
     <script type="module" src="./src/main.ts"></script>
   </body>

@@ -57,7 +57,8 @@ Mỗi lần bấm, trình duyệt gọi thẳng 3 nguồn miễn phí, không qu
 | Open Buildings (Google + Microsoft, bản gộp của VIDA) | Đường viền nhà dò từ ảnh vệ tinh, kèm độ tin cậy | `data.source.coop`, file GeoParquet chia theo nước và theo ô S2; app chỉ đọc đúng phần byte của khu đã vẽ |
 | Nominatim | Tên khu (ví dụ “Khương Thượng, Đống Đa”) và mã nước (để biết đọc file Open Buildings nào) | `nominatim.openstreetmap.org` |
 
-Bản đồ nền là ảnh ô tối của CARTO (`basemaps.cartocdn.com`); ô tìm địa điểm cũng hỏi Nominatim.
+Bản đồ nền là ảnh ô của OpenStreetMap (`tile.openstreetmap.org`) được làm tối bằng CSS; nếu không tải được thì
+chuyển sang nền xám tối của Esri. Cả hai không cần API key. Ô tìm địa điểm cũng hỏi Nominatim.
 
 Cách đọc Open Buildings mà không tải cả file vài GB: liệt kê các ô của nước đó, tính ô S2 chứa khu, đọc phần đuôi file
 (metadata), bỏ các nhóm hàng có khung bao nằm ngoài khu, đọc cột khung bao của các nhóm còn lại để biết đúng những

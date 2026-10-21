@@ -37,7 +37,8 @@ Quãng đường (đồng hồ km), vị trí, đèn và âm thanh được lưu
 ## Dựng khu thật (`newmap/`)
 
 Trang riêng tại `newmap/` (bản chơi: https://huynhnd53.github.io/vgang-online/newmap/): vẽ một khu trên bản đồ
-(chấm từng góc, hoặc lấy ô vuông 500 m giữa màn hình), bấm **Dựng khu này** để dựng khu đó thành 3D từ dữ liệu thật.
+(**Kéo khung** rồi kéo chuột/ngón tay, hoặc giữ Shift và kéo; **Vẽ khu** để chấm từng góc; hoặc lấy ô vuông 500 m giữa
+màn hình; vẽ xong vẫn kéo được các góc), bấm **Dựng khu này** để dựng khu đó thành 3D từ dữ liệu thật.
 Mỗi lần bấm, trình duyệt gọi thẳng 3 nguồn miễn phí, không qua máy chủ nào của mình:
 
 | Nguồn | Lấy gì | Ở đâu |

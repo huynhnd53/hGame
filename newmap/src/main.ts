@@ -7,6 +7,7 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 
 const mapEl = $('map');
 const canvas = $<HTMLCanvasElement>('view');
+const btnBox = $<HTMLButtonElement>('btn-box');
 const btnDraw = $<HTMLButtonElement>('btn-draw');
 const btnSquare = $<HTMLButtonElement>('btn-square');
 const btnClear = $<HTMLButtonElement>('btn-clear');
@@ -35,6 +36,7 @@ function refresh(): void {
   const area = map.area;
   const tooBig = area > MAX_AREA_M2;
   const tooSmall = area < MIN_AREA_M2;
+  btnBox.classList.toggle('active', map.isBoxing);
   btnDraw.textContent = map.isDrawing ? 'Xong' : 'Vẽ khu';
   btnDraw.disabled = map.isDrawing && map.pointCount < 3;
   btnBuild.disabled = !poly || tooBig || tooSmall || !!running;
@@ -44,7 +46,7 @@ function refresh(): void {
     areaEl.textContent = `Diện tích: ${fmtArea(area)}${tooBig ? ` · quá lớn, tối đa ${fmtArea(MAX_AREA_M2)}` : tooSmall ? ' · quá nhỏ' : ''}`;
     areaEl.classList.toggle('warn', tooBig || tooSmall);
   } else {
-    areaEl.textContent = map.isDrawing ? 'Chấm các góc của khu trên bản đồ…' : '';
+    areaEl.textContent = map.isDrawing ? 'Chấm các góc của khu trên bản đồ…' : map.isBoxing ? 'Kéo trên bản đồ để vẽ khung…' : '';
   }
 }
 
@@ -142,6 +144,11 @@ function downloadJson(): void {
 }
 
 map.onChange = refresh;
+btnBox.addEventListener('click', () => {
+  showMap();
+  if (map.isBoxing) map.clear();
+  else map.startBox();
+});
 btnDraw.addEventListener('click', () => {
   showMap();
   if (map.isDrawing) map.finishDrawing();

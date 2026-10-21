@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
-import { areaM2, clipPolyline, LocalProjection, type LonLat, pointInRing, samplePoints, type XZ } from '../newmap/src/geo';
+import { areaM2, boxFromCorners, clipPolyline, LocalProjection, type LonLat, pointInRing, samplePoints, type XZ } from '../newmap/src/geo';
 import { mergeFootprints, MIN_CONFIDENCE } from '../newmap/src/merge';
 import { guessLevels, osmBuilding, osmToScene, parseLength, roadWidth, type SceneModel } from '../newmap/src/model';
 import { iso3, placeName } from '../newmap/src/nominatim';
@@ -60,6 +60,18 @@ describe('geometry helpers', () => {
     const sq: LonLat[] = [HANOI, [HANOI[0] + d, HANOI[1]], [HANOI[0] + d, HANOI[1] + d], [HANOI[0], HANOI[1] + d]];
     expect(areaM2(sq)).toBeGreaterThan(11_400);
     expect(areaM2(sq)).toBeLessThan(11_600);
+  });
+
+  it('makes a box from two opposite corners dragged in any direction', () => {
+    const box: LonLat[] = [
+      [105.8, 21.0],
+      [105.81, 21.0],
+      [105.81, 21.01],
+      [105.8, 21.01],
+    ];
+    expect(boxFromCorners([105.8, 21.0], [105.81, 21.01])).toEqual(box);
+    expect(boxFromCorners([105.81, 21.0], [105.8, 21.01])).toEqual(box);
+    expect(boxFromCorners([105.81, 21.01], [105.8, 21.0])).toEqual(box);
   });
 
   it('spreads sample points inside a footprint', () => {

@@ -33,6 +33,18 @@ export class LocalProjection {
   }
 }
 
+/** Axis-aligned rectangle with two opposite corners, as a ring going SW, SE, NE, NW. */
+export function boxFromCorners(a: LonLat, b: LonLat): LonLat[] {
+  const [w, e] = a[0] < b[0] ? [a[0], b[0]] : [b[0], a[0]];
+  const [s, n] = a[1] < b[1] ? [a[1], b[1]] : [b[1], a[1]];
+  return [
+    [w, s],
+    [e, s],
+    [e, n],
+    [w, n],
+  ];
+}
+
 export function bboxOf(points: LonLat[]): BBox {
   const b = { minLon: Infinity, minLat: Infinity, maxLon: -Infinity, maxLat: -Infinity };
   for (const [lon, lat] of points) {

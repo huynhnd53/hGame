@@ -110,8 +110,28 @@ main {
   touch-action: none;
 }
 
-#map.drawing {
+#map.drawing,
+#map.boxing {
   cursor: crosshair;
+}
+
+/* One finger draws the box instead of panning the map. */
+#map.boxing {
+  touch-action: none;
+}
+
+.btn.active {
+  background: #45545a;
+  border-color: #d9c7a8;
+}
+
+kbd {
+  font: inherit;
+  font-size: 12px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #fff;
 }
 
 #side {

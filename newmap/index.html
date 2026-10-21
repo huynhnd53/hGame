@@ -12,6 +12,7 @@
       <a class="home" href="../">← Vgang</a>
       <h1>Dựng khu thật</h1>
       <div class="tools">
+        <button class="btn" id="btn-box" type="button">Kéo khung</button>
         <button class="btn" id="btn-draw" type="button">Vẽ khu</button>
         <button class="btn" id="btn-square" type="button">Khung 500 m</button>
         <button class="btn" id="btn-clear" type="button">Xoá</button>
@@ -23,7 +24,11 @@
       <div id="map"></div>
       <canvas id="view" class="hidden"></canvas>
       <aside id="side">
-        <p id="hint">Bấm <b>Vẽ khu</b> rồi chấm từng góc trên bản đồ, bấm lại góc đầu để khép. Hoặc bấm <b>Khung 500 m</b> để lấy ô vuông giữa màn hình.</p>
+        <p id="hint">
+          Bấm <b>Kéo khung</b> rồi kéo trên bản đồ để vẽ khung (hoặc giữ <kbd>Shift</kbd> và kéo). Muốn khu méo thì bấm
+          <b>Vẽ khu</b>, chấm từng góc, bấm lại góc đầu để khép. <b>Khung 500 m</b> lấy ô vuông giữa màn hình. Vẽ xong vẫn
+          kéo được các góc để chỉnh.
+        </p>
         <p id="area"></p>
         <div id="result" class="hidden">
           <h2 id="place-name"></h2>

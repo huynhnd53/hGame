@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#1f2a30" />
+    <title>Dựng khu thật · Vgang Online</title>
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <a class="home" href="../">← Vgang</a>
+      <h1>Dựng khu thật</h1>
+      <div class="tools">
+        <button class="btn" id="btn-draw" type="button">Vẽ khu</button>
+        <button class="btn" id="btn-square" type="button">Khung 500 m</button>
+        <button class="btn" id="btn-clear" type="button">Xoá</button>
+        <button class="btn primary" id="btn-build" type="button" disabled>Dựng khu này</button>
+        <button class="btn" id="btn-toggle" type="button" disabled>Xem 3D</button>
+      </div>
+    </header>
+    <main>
+      <div id="map"></div>
+      <canvas id="view" class="hidden"></canvas>
+      <aside id="side">
+        <p id="hint">Bấm <b>Vẽ khu</b> rồi chấm từng góc trên bản đồ, bấm lại góc đầu để khép. Hoặc bấm <b>Khung 500 m</b> để lấy ô vuông giữa màn hình.</p>
+        <p id="area"></p>
+        <div id="result" class="hidden">
+          <h2 id="place-name"></h2>
+          <dl id="stats"></dl>
+          <label class="check"><input type="checkbox" id="by-source" /> Tô màu nhà theo nguồn</label>
+          <ul class="legend">
+            <li><i style="background: #e07a3f"></i>OSM</li>
+            <li><i style="background: #3f9b5a"></i>Google</li>
+            <li><i style="background: #3f74c9"></i>Microsoft</li>
+          </ul>
+          <button class="btn" id="btn-json" type="button">Tải dữ liệu khu (JSON)</button>
+        </div>
+        <details id="log-box" open>
+          <summary>Nhật ký</summary>
+          <ol id="log"></ol>
+        </details>
+        <p class="credits">
+          Dữ liệu: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>
+          (Overpass, Nominatim);
+          <a href="https://source.coop/vida/google-microsoft-open-buildings" target="_blank" rel="noopener">Google-Microsoft Open Buildings</a>
+          gộp bởi VIDA. Trình duyệt gọi thẳng các nguồn này, không qua máy chủ nào khác.
+        </p>
+      </aside>
+    </main>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

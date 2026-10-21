@@ -14,6 +14,8 @@ export interface SceneModel {
   yards: Surface[];
   barriers: Barrier[];
   pois: ScenePoi[];
+  /** Trees mapped in OSM (single trees and tree rows). */
+  trees: XZ[];
 }
 
 export type BuildingSource = 'osm' | 'google' | 'microsoft' | 'open-buildings';
@@ -30,6 +32,7 @@ export interface SceneBuilding {
   levels: number | null;
   color: string | null;
   roofColor: string | null;
+  /** OSM roof:shape, or "" when not mapped. */
   roofShape: string;
   roofHeight: number;
   /** Temples, pagodas, churches and listed monuments are drawn in their own colours. */
@@ -46,6 +49,8 @@ export interface Corridor {
   kind: string;
   /** Under ground or under a roof: drawn but not counted as open road surface. */
   hidden: boolean;
+  /** Traffic only goes along the drawing direction. */
+  oneway: boolean;
 }
 
 export interface Surface {
@@ -174,10 +179,12 @@ export function osmBuilding(id: string, outer: Ring, holes: Ring[], t: Tags, foo
   const levels = parseCount(t['building:levels']);
   const minLevel = parseCount(t['building:min_level']);
   const roofLevels = parseCount(t['roof:levels']) ?? 0;
-  const roofShape = t['roof:shape'] ?? (role(t) === 'worship' ? 'hipped' : 'flat');
-  const roofHeight = parseLength(t['roof:height']) ?? (roofShape === 'flat' ? 0 : roofLevels ? roofLevels * LEVEL_H : 2.5);
+  // An empty shape means the roof is not mapped; the scene then picks one by the size of the house.
+  const roofShape = t['roof:shape'] ?? (role(t) === 'worship' ? 'hipped' : '');
+  const flat = roofShape === '' || roofShape === 'flat';
+  const roofHeight = parseLength(t['roof:height']) ?? (flat ? 0 : roofLevels ? roofLevels * LEVEL_H : 2.5);
   let height = parseLength(t.height ?? t['building:height']);
-  if (height !== null) height = Math.max(1, height - (roofShape === 'flat' ? 0 : roofHeight));
+  if (height !== null) height = Math.max(1, height - (flat ? 0 : roofHeight));
   else if (levels !== null) height = Math.max(1, levels * LEVEL_H);
   else height = guessLevels(id, footprintM2) * LEVEL_H;
   const minHeight = parseLength(t.min_height) ?? (minLevel !== null ? minLevel * LEVEL_H : 0);
@@ -217,6 +224,7 @@ export function osmToScene(osm: OsmData, boundary: Ring, p: LocalProjection): Sc
     yards: [],
     barriers: [],
     pois: [],
+    trees: [],
   };
   for (const a of osm.areas) {
     const { outer, holes } = project(p, a);
@@ -248,9 +256,12 @@ function addLine(m: SceneModel, l: Line, p: LocalProjection, boundary: Ring): vo
   pieces.forEach((points, i) => {
     const id = pieces.length > 1 ? `${l.id}#${i}` : l.id;
     if (l.kind === 'road') {
-      m.roads.push({ id, points, width: roadWidth(l.tags), kind: l.tags.highway, hidden: isOffGround(l.tags) });
+      const oneway = l.tags.oneway === 'yes' || l.tags.oneway === '1' || l.tags.junction === 'roundabout';
+      m.roads.push({ id, points, width: roadWidth(l.tags), kind: l.tags.highway, hidden: isOffGround(l.tags), oneway });
     } else if (l.kind === 'waterway') {
-      m.waterways.push({ id, points, width: waterwayWidth(l.tags), kind: l.tags.waterway, hidden: isOffGround(l.tags) });
+      m.waterways.push({ id, points, width: waterwayWidth(l.tags), kind: l.tags.waterway, hidden: isOffGround(l.tags), oneway: false });
+    } else if (l.kind === 'treeRow') {
+      m.trees.push(...pointsAlong(points, 8));
     } else {
       const b = BARRIER[l.tags.barrier] ?? BARRIER.wall;
       const h = parseLength(l.tags.height);
@@ -261,5 +272,26 @@ function addLine(m: SceneModel, l: Line, p: LocalProjection, boundary: Ring): vo
 
 function addPoi(m: SceneModel, poi: Poi, p: LocalProjection, boundary: Ring): void {
   const at = p.toXZ(poi.at);
-  if (pointInRing(at[0], at[1], boundary)) m.pois.push({ id: poi.id, at, kind: poi.kind, name: poi.tags.name ?? null });
+  if (!pointInRing(at[0], at[1], boundary)) return;
+  if (poi.kind === 'tree') m.trees.push(at);
+  else m.pois.push({ id: poi.id, at, kind: poi.kind, name: poi.tags.name ?? null });
+}
+
+/** Points every `step` metres along a polyline, starting half a step in. */
+export function pointsAlong(pts: XZ[], step: number, offset = step / 2): XZ[] {
+  const out: XZ[] = [];
+  let next = offset;
+  let walked = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const [ax, az] = pts[i - 1];
+    const [bx, bz] = pts[i];
+    const len = Math.hypot(bx - ax, bz - az);
+    while (next <= walked + len) {
+      const t = (next - walked) / len;
+      out.push([ax + (bx - ax) * t, az + (bz - az) * t]);
+      next += step;
+    }
+    walked += len;
+  }
+  return out;
 }

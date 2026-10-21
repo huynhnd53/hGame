@@ -36,8 +36,19 @@ Quãng đường (đồng hồ km), vị trí, đèn và âm thanh được lưu
 
 ## Dựng khu thật (`newmap/`)
 
-Trang riêng tại `newmap/` (bản chơi: https://huynhnd53.github.io/vgang-online/newmap/): vẽ một khu trên bản đồ
-(chấm từng góc, hoặc lấy ô vuông 500 m giữa màn hình), bấm **Dựng khu này** để dựng khu đó thành 3D từ dữ liệu thật.
+Trang riêng tại `newmap/` (bản chơi: https://huynhnd53.github.io/vgang-online/newmap/): bản đồ tối bên trái, mô hình
+3D bên phải. Tìm địa điểm (phím `/`), vẽ khu bằng nút khung (kéo chuột/ngón tay, hoặc giữ Shift và kéo), chấm từng góc,
+hoặc lấy ô vuông 500 m giữa màn hình; vẽ xong vẫn kéo được các góc. Bấm **Dựng khu này** (hoặc **Ví dụ Khương Thượng**)
+để dựng khu đó thành 3D từ dữ liệu thật.
+
+Kiểu 3D: nhà có lưới cửa sổ, tường màu nhạt; nhà nhỏ mái dốc nhiều màu (mái hai dốc hoặc bốn dốc, theo `roof:shape` nếu
+có), nhà lớn mái bằng; đường nhựa có vỉa hè và vạch sơn (vạch giữa đứt, đường rộng có vạch làn), cây xanh (cây có trên
+OSM, thêm hàng cây ven đường lớn và cây trong công viên chỗ đất trống), xe chạy bên phải đường. Mặt trời theo giờ và
+ngày thật của khu (thanh giờ dưới cảnh, nút ▶ cho thời gian trôi), đổ bóng; tối thì cửa sổ sáng đèn. La bàn góc trên
+cho biết hướng nhìn và độ nghiêng (bấm để quay về hướng Bắc); chấm xanh trên bản đồ là chỗ camera đang nhìn. Kéo để
+xoay, chuột phải hoặc hai ngón để dời, lăn chuột hoặc chụm ngón để phóng; thanh nút bên phải (và phím ← → ↑ ↓ + − R F,
+Space) xoay từng nấc, nghiêng, phóng, tự xoay, về góc đầu, toàn màn hình.
+
 Mỗi lần bấm, trình duyệt gọi thẳng 3 nguồn miễn phí, không qua máy chủ nào của mình:
 
 | Nguồn | Lấy gì | Ở đâu |
@@ -46,7 +57,7 @@ Mỗi lần bấm, trình duyệt gọi thẳng 3 nguồn miễn phí, không qu
 | Open Buildings (Google + Microsoft, bản gộp của VIDA) | Đường viền nhà dò từ ảnh vệ tinh, kèm độ tin cậy | `data.source.coop`, file GeoParquet chia theo nước và theo ô S2; app chỉ đọc đúng phần byte của khu đã vẽ |
 | Nominatim | Tên khu (ví dụ “Khương Thượng, Đống Đa”) và mã nước (để biết đọc file Open Buildings nào) | `nominatim.openstreetmap.org` |
 
-Bản đồ nền là ảnh ô của `tile.openstreetmap.org`.
+Bản đồ nền là ảnh ô tối của CARTO (`basemaps.cartocdn.com`); ô tìm địa điểm cũng hỏi Nominatim.
 
 Cách đọc Open Buildings mà không tải cả file vài GB: liệt kê các ô của nước đó, tính ô S2 chứa khu, đọc phần đuôi file
 (metadata), bỏ các nhóm hàng có khung bao nằm ngoài khu, đọc cột khung bao của các nhóm còn lại để biết đúng những
@@ -63,7 +74,8 @@ Cách ghép hai nguồn nhà (`newmap/src/merge.ts`):
 
 Cấu trúc: `overpass.ts` (truy vấn, chọn máy, đọc kết quả), `nominatim.ts`, `openBuildings.ts` + `s2.ts` (đọc
 GeoParquet theo byte), `model.ts` (đổi sang mét, chiều cao, bề rộng đường), `merge.ts`, `pipeline.ts` (ghép cả quy
-trình), `scene3d.ts` (three.js), `mapView.ts` (Leaflet, vẽ khu), `main.ts`. Nút *Tải dữ liệu khu (JSON)* xuất toàn bộ
+trình), `decor.ts` (cây, xe), `sun.ts` (vị trí mặt trời), `scene3d.ts` (three.js), `mapView.ts` (Leaflet, vẽ khu),
+`main.ts`. Nút *Tải dữ liệu khu (JSON)* xuất toàn bộ
 khu (toạ độ mét, x hướng đông, z hướng nam) để dùng tiếp, ví dụ đưa vào game.
 
 File mẫu cho test `tests/fixtures/open-buildings-sample.parquet` có cùng dạng với file của VIDA, tạo bằng

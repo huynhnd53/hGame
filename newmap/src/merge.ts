@@ -138,7 +138,7 @@ export function footprintBuilding(id: string, fp: Footprint, outer: Ring, holes:
     levels: null,
     color: null,
     roofColor: null,
-    roofShape: 'flat',
+    roofShape: '',
     roofHeight: 0,
     role: 'house',
     confidence: fp.confidence,

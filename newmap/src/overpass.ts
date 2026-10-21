@@ -11,8 +11,8 @@ export const FALLBACK_AFTER_MS = 7000;
 export type Tags = Record<string, string>;
 
 export type AreaKind = 'building' | 'water' | 'park' | 'worship' | 'heritage' | 'road';
-export type LineKind = 'road' | 'waterway' | 'barrier';
-export type PoiKind = 'worship' | 'heritage';
+export type LineKind = 'road' | 'waterway' | 'barrier' | 'treeRow';
+export type PoiKind = 'worship' | 'heritage' | 'tree';
 
 export interface Area {
   id: string;
@@ -87,6 +87,8 @@ export function buildQuery(polygon: LonLat[], timeoutS = 60): string {
     `  node["historic"]${p};`,
     `  way["historic"]${p};`,
     `  way["barrier"~"^(wall|fence|city_wall|retaining_wall|hedge)$"]${p};`,
+    `  node["natural"="tree"]${p};`,
+    `  way["natural"="tree_row"]${p};`,
     ');',
     'out geom;',
   ].join('\n');
@@ -115,6 +117,7 @@ export function lineKind(t: Tags): LineKind | null {
   if (t.highway && t.area !== 'yes') return 'road';
   if (t.waterway && t.waterway !== 'riverbank') return 'waterway';
   if (t.barrier) return 'barrier';
+  if (t.natural === 'tree_row') return 'treeRow';
   return null;
 }
 
@@ -161,7 +164,8 @@ export function parseOverpass(json: OverpassJson): OsmData {
     const id = `${el.type}/${el.id}`;
     if (el.type === 'node') {
       if (el.lon === undefined || el.lat === undefined) continue;
-      const kind: PoiKind | null = tags.amenity === 'place_of_worship' ? 'worship' : tags.historic ? 'heritage' : null;
+      const kind: PoiKind | null =
+        tags.amenity === 'place_of_worship' ? 'worship' : tags.historic ? 'heritage' : tags.natural === 'tree' ? 'tree' : null;
       if (kind) out.pois.push({ id, kind, at: [el.lon, el.lat], tags });
     } else if (el.type === 'way') {
       const pts = toLonLat(el.geometry);

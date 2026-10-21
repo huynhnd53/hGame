@@ -1,6 +1,6 @@
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { areaM2, type LonLat } from './geo';
+import { areaM2, boxFromCorners, type LonLat } from './geo';
 
 /** Bigger areas make Overpass slow and the scene heavy. */
 export const MAX_AREA_M2 = 1_500_000;
@@ -21,71 +21,233 @@ export function squareAround(lon: number, lat: number, side: number): LonLat[] {
   ];
 }
 
-/** The slippy map with polygon drawing: click to add corners, click the first corner (or "Xong") to close. */
+/** How close (in screen pixels) a press must be to a corner to grab it. */
+const GRAB_PX = 16;
+
+type Drag = { kind: 'box'; from: LonLat; x: number; y: number } | { kind: 'corner'; index: number };
+
+/**
+ * The slippy map with two ways to outline an area: drag a box ("Kéo khung"), or click corners one by one ("Vẽ khu",
+ * click the first corner or "Xong" to close). The corners of a finished outline can be dragged to adjust it.
+ */
 export class MapView {
   readonly map: L.Map;
   private points: LonLat[] = [];
   private closed = false;
-  private drawing = false;
+  private mode: 'idle' | 'polygon' | 'box' = 'idle';
+  /** The outline is a box, so dragging a corner keeps it a rectangle. */
+  private isBox = false;
+  private drag: Drag | null = null;
+  private readonly el: HTMLElement;
   private readonly shape: L.Polygon;
   private readonly corners = L.layerGroup();
+  private viewMarker: L.CircleMarker | null = null;
   onChange: () => void = () => {};
 
   constructor(el: HTMLElement) {
-    this.map = L.map(el, { zoomControl: true }).setView(START, 16);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    this.el = el;
+    // Shift-drag is ours (a box), not Leaflet's box zoom.
+    this.map = L.map(el, { zoomControl: true, boxZoom: false }).setView(START, 16);
+    // Dark basemap so the drawn area stands out.
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 20,
+      subdomains: 'abcd',
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
     }).addTo(this.map);
-    this.shape = L.polygon([], { color: '#d2562b', weight: 2, fillOpacity: 0.12 }).addTo(this.map);
+    L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(this.map);
+    this.map.zoomControl.setPosition('topright');
+    this.shape = L.polygon([], { color: '#f08a5d', weight: 2, fillColor: '#e8734a', fillOpacity: 0.35, interactive: false }).addTo(this.map);
     this.corners.addTo(this.map);
     // Keep Leaflet's idea of the map size right when the layout changes (styles arriving, phone rotation).
     new ResizeObserver(() => this.map.invalidateSize()).observe(el);
     this.map.on('click', (e: L.LeafletMouseEvent) => {
-      if (!this.drawing) return;
+      if (this.mode !== 'polygon') return;
       this.points.push([e.latlng.lng, e.latlng.lat]);
       this.redraw();
     });
+    // Capture phase, so a press that starts a box or grabs a corner never reaches Leaflet's panning.
+    el.addEventListener('pointerdown', (e) => this.onDown(e), { capture: true });
+    el.addEventListener('pointermove', (e) => this.onMove(e));
+    el.addEventListener('pointerup', (e) => this.onUp(e));
+    el.addEventListener('pointercancel', (e) => this.onUp(e));
   }
 
-  /** Starts a new outline. */
+  private lonLatOf(e: PointerEvent): LonLat {
+    const ll = this.map.mouseEventToLatLng(e as unknown as MouseEvent);
+    return [ll.lng, ll.lat];
+  }
+
+  /** Index of the corner of the finished outline under the pointer, or -1. */
+  private cornerAt(e: PointerEvent): number {
+    if (!this.closed) return -1;
+    const p = this.map.mouseEventToContainerPoint(e as unknown as MouseEvent);
+    let best = -1;
+    let bestD = GRAB_PX;
+    this.points.forEach(([lon, lat], i) => {
+      const d = this.map.latLngToContainerPoint([lat, lon]).distanceTo(p);
+      if (d < bestD) {
+        best = i;
+        bestD = d;
+      }
+    });
+    return best;
+  }
+
+  private onDown(e: PointerEvent): void {
+    if (!e.isPrimary || e.button !== 0 || (e.target as Element).closest('.leaflet-control')) return;
+    if (this.mode === 'box' || (this.mode === 'idle' && e.shiftKey)) {
+      const from = this.lonLatOf(e);
+      this.drag = { kind: 'box', from, x: e.clientX, y: e.clientY };
+      this.points = [from, from, from, from];
+      this.closed = false;
+      this.isBox = true;
+    } else if (this.mode === 'idle') {
+      const index = this.cornerAt(e);
+      if (index < 0) return;
+      this.drag = { kind: 'corner', index };
+    } else {
+      return;
+    }
+    e.stopPropagation();
+    e.preventDefault();
+    this.map.dragging.disable();
+    this.el.setPointerCapture(e.pointerId);
+    this.redraw();
+  }
+
+  private onMove(e: PointerEvent): void {
+    if (!this.drag) {
+      // Show that corners can be grabbed.
+      this.el.style.cursor = this.mode === 'idle' && this.cornerAt(e) >= 0 ? 'move' : '';
+      return;
+    }
+    const at = this.lonLatOf(e);
+    if (this.drag.kind === 'box') {
+      this.points = boxFromCorners(this.drag.from, at);
+    } else if (this.isBox) {
+      // Keep the opposite corner where it is; the grabbed one may now be a different corner of the new box.
+      this.points = boxFromCorners(this.points[(this.drag.index + 2) % 4], at);
+      this.drag.index = this.points.findIndex((q) => q[0] === at[0] && q[1] === at[1]);
+    } else {
+      const index = this.drag.index;
+      this.points = this.points.map((q, i) => (i === index ? at : q));
+    }
+    this.redraw();
+  }
+
+  private onUp(e: PointerEvent): void {
+    const drag = this.drag;
+    if (!drag) return;
+    this.drag = null;
+    if (this.el.hasPointerCapture(e.pointerId)) this.el.releasePointerCapture(e.pointerId);
+    if (this.mode !== 'box') this.map.dragging.enable();
+    if (drag.kind === 'box') {
+      if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 8) {
+        // A tap, not a drag: stay in box mode.
+        this.points = [];
+      } else {
+        this.closed = true;
+        this.setMode('idle');
+      }
+    }
+    this.redraw();
+  }
+
+  private setMode(mode: MapView['mode']): void {
+    this.mode = mode;
+    const c = this.el.classList;
+    c.toggle('drawing', mode === 'polygon');
+    c.toggle('boxing', mode === 'box');
+    if (mode === 'polygon') this.map.doubleClickZoom.disable();
+    else this.map.doubleClickZoom.enable();
+    if (mode === 'box') this.map.dragging.disable();
+    else this.map.dragging.enable();
+  }
+
+  /** Starts a new outline, clicking corner by corner. */
   startDrawing(): void {
     this.points = [];
     this.closed = false;
-    this.drawing = true;
-    this.map.doubleClickZoom.disable();
-    this.map.getContainer().classList.add('drawing');
+    this.isBox = false;
+    this.setMode('polygon');
+    this.redraw();
+  }
+
+  /** Waits for a drag on the map that draws a box. */
+  startBox(): void {
+    this.points = [];
+    this.closed = false;
+    this.setMode('box');
     this.redraw();
   }
 
   finishDrawing(): void {
     if (this.points.length < 3) return;
     this.closed = true;
-    this.drawing = false;
-    this.map.doubleClickZoom.enable();
-    this.map.getContainer().classList.remove('drawing');
+    this.setMode('idle');
     this.redraw();
+  }
+
+  /** Uses a given outline (a box when `box` is set) and shows it. */
+  setOutline(points: LonLat[], box: boolean): void {
+    this.points = points;
+    this.isBox = box;
+    this.finishDrawing();
+    this.map.fitBounds(
+      L.latLngBounds(points.map(([lon, lat]) => [lat, lon] as L.LatLngTuple)),
+      { padding: [60, 60] },
+    );
+  }
+
+  /** Shows where the 3D camera is looking, or hides the marker. */
+  showViewTarget(at: LonLat | null): void {
+    if (!at) {
+      this.viewMarker?.remove();
+      this.viewMarker = null;
+      return;
+    }
+    const ll: L.LatLngTuple = [at[1], at[0]];
+    if (this.viewMarker) this.viewMarker.setLatLng(ll);
+    else {
+      this.viewMarker = L.circleMarker(ll, {
+        radius: 6,
+        color: '#0b2e1f',
+        weight: 3,
+        fillColor: '#3ccf8e',
+        fillOpacity: 1,
+        interactive: false,
+      }).addTo(this.map);
+    }
+  }
+
+  /** Moves the map to a search result. */
+  goTo(lat: number, lon: number, bbox?: [number, number, number, number]): void {
+    if (bbox) this.map.flyToBounds([[bbox[0], bbox[2]], [bbox[1], bbox[3]]], { maxZoom: 17, duration: 0.8 });
+    else this.map.flyTo([lat, lon], 17, { duration: 0.8 });
   }
 
   /** Uses a square of `side` metres around the middle of the current view. */
   squareHere(side: number): void {
     const c = this.map.getCenter();
     this.points = squareAround(c.lng, c.lat, side);
-    this.drawing = false;
+    this.isBox = true;
     this.finishDrawing();
   }
 
   clear(): void {
     this.points = [];
     this.closed = false;
-    this.drawing = false;
-    this.map.doubleClickZoom.enable();
-    this.map.getContainer().classList.remove('drawing');
+    this.setMode('idle');
     this.redraw();
   }
 
   get isDrawing(): boolean {
-    return this.drawing;
+    return this.mode === 'polygon';
+  }
+
+  get isBoxing(): boolean {
+    return this.mode === 'box';
   }
 
   /** The finished outline, or null while drawing or empty. */
@@ -105,17 +267,21 @@ export class MapView {
     this.shape.setLatLngs(this.points.map(([lon, lat]) => [lat, lon] as L.LatLngTuple));
     this.shape.setStyle({ dashArray: this.closed ? undefined : '6 6' });
     this.corners.clearLayers();
-    if (!this.closed) {
+    const handles = this.mode === 'polygon' || (this.closed && !this.drag) || this.drag?.kind === 'corner';
+    if (handles) {
       this.points.forEach(([lon, lat], i) => {
+        const first = this.mode === 'polygon' && i === 0;
         const m = L.circleMarker([lat, lon], {
-          radius: i === 0 ? 7 : 4,
-          color: '#d2562b',
-          fillColor: i === 0 ? '#fff' : '#d2562b',
+          radius: first || this.closed ? 7 : 4,
+          color: '#f08a5d',
+          fillColor: first || this.closed ? '#fff' : '#f08a5d',
           fillOpacity: 1,
           weight: 2,
+          // Corners of a finished outline are moved by the pointer handlers above, not by Leaflet.
+          interactive: first,
           bubblingMouseEvents: false,
         });
-        if (i === 0) {
+        if (first) {
           m.bindTooltip('Bấm để khép khu', { direction: 'top' });
           m.on('click', () => this.finishDrawing());
         }

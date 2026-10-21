@@ -74,3 +74,44 @@ export async function lookupPlace(at: LonLat, f: typeof fetch = fetch, signal?: 
     iso3: cc ? iso3(cc) : null,
   };
 }
+
+export const NOMINATIM_SEARCH = 'https://nominatim.openstreetmap.org/search';
+
+export interface SearchHit {
+  name: string;
+  /** The rest of the address, for telling places with the same name apart. */
+  detail: string;
+  lat: number;
+  lon: number;
+  /** South, north, west, east. */
+  bbox?: [number, number, number, number];
+}
+
+interface NominatimHit {
+  name?: string;
+  display_name: string;
+  lat: string;
+  lon: string;
+  boundingbox?: [string, string, string, string];
+}
+
+/** Places matching a search, for the box over the map. */
+export async function searchPlaces(q: string, f: typeof fetch = fetch, signal?: AbortSignal): Promise<SearchHit[]> {
+  const url = new URL(NOMINATIM_SEARCH);
+  url.search = new URLSearchParams({ q, format: 'jsonv2', limit: '6', 'accept-language': 'vi' }).toString();
+  const res = await f(url.toString(), { signal });
+  if (!res.ok) throw new Error(`Nominatim HTTP ${res.status}`);
+  const hits = (await res.json()) as NominatimHit[];
+  return hits.map((h) => {
+    const parts = h.display_name.split(',').map((x) => x.trim());
+    const name = h.name || parts[0];
+    const b = h.boundingbox?.map(Number);
+    return {
+      name,
+      detail: parts.filter((x) => x !== name).join(', '),
+      lat: Number(h.lat),
+      lon: Number(h.lon),
+      bbox: b && b.every(Number.isFinite) ? [b[0], b[1], b[2], b[3]] : undefined,
+    };
+  });
+}

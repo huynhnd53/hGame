@@ -45,7 +45,15 @@ const $ = id => document.getElementById(id);
 let link = null;
 let joined = false;
 
-const pre = new URLSearchParams(location.search).get("c");
+const params = new URLSearchParams(location.search);
+const pre = params.get("c");
+// Chữ theo game đang chơi trên máy tính (?game=fruit: điện thoại là thanh kiếm).
+if (params.get("game") === "fruit") {
+  document.querySelector(".top h1").textContent = "Thanh kiếm";
+  document.querySelector("#live .hint").textContent = "Cầm như điều khiển TV, đầu máy chĩa vào màn hình. Vung nhanh qua quả để chém.";
+  $("reset").textContent = "CĂN GIỮA";
+  document.querySelector("#controls .hint").textContent = "Chĩa đầu máy vào giữa màn hình máy tính rồi bấm.";
+}
 if (pre) $("codeIn").value = pre.toUpperCase();
 $("joinBtn").onclick = join;
 $("codeIn").addEventListener("keydown", e => { if (e.key === "Enter") join(); });
@@ -68,6 +76,7 @@ async function join(){
       setTimeout(() => { if (!got) $("joinErr").textContent = "Chưa nhận được dữ liệu cảm biến – kiểm tra lại HTTPS."; }, 2000);
     },
     onClosed() { joined = false; $("padState").textContent = "Màn hình đã đóng"; },
+    onMessage(msg) { if (msg.t === "buzz" && navigator.vibrate) navigator.vibrate(Math.min(400, Number(msg.ms) || 30)); },
     onError(text) { $("joinErr").textContent = text; $("joinBtn").disabled = false; },
   });
 }

@@ -19,7 +19,7 @@ function newCode() {
   return Array.from({ length: 4 }, () => ALPHABET[Math.floor(Math.random() * ALPHABET.length)]).join("");
 }
 
-/** Máy tính: mở một phòng, nhận góc xoay từ các điện thoại nối vào. */
+/** Máy tính: mở một phòng, nhận góc xoay từ các điện thoại nối vào. Trả về hàm gửi tin ngược lại. */
 function hostScreen({ onCode, onPads, onMessage, onError }) {
   const pads = new Set();
   let peer = null;
@@ -49,10 +49,15 @@ function hostScreen({ onCode, onPads, onMessage, onError }) {
     for (const conn of pads) { try { conn.send({ t: "closed" }); } catch {} }
     if (peer) peer.destroy();
   });
+
+  return {
+    /** Gửi tin tới mọi điện thoại đang nối (ví dụ {t:"buzz", ms} để rung). */
+    broadcast(msg) { for (const conn of pads) { try { conn.send(msg); } catch {} } },
+  };
 }
 
 /** Điện thoại: nối vào phòng có mã `code`. Trả về hàm gửi tin. */
-function joinPad(code, { onOpen, onClosed, onError }) {
+function joinPad(code, { onOpen, onClosed, onError, onMessage = () => {} }) {
   const peer = new Peer(peerOptions());
   let conn = null;
   let opened = false;
@@ -65,7 +70,11 @@ function joinPad(code, { onOpen, onClosed, onError }) {
   peer.on("open", () => {
     conn = peer.connect(PREFIX + code, { serialization: "json" });
     conn.on("open", () => { opened = true; clearTimeout(timer); onOpen(); });
-    conn.on("data", (msg) => { if (msg && msg.t === "closed") onClosed(); });
+    conn.on("data", (msg) => {
+      if (!msg) return;
+      if (msg.t === "closed") onClosed();
+      else onMessage(msg);
+    });
     conn.on("close", () => { if (opened) onClosed(); });
   });
   peer.on("error", (err) => {

@@ -8,6 +8,7 @@ Repo gom các dự án web, mỗi dự án nằm trong một thư mục riêng, 
 | [`newmap/`](newmap/) | Dựng khu thật: vẽ một khu trên bản đồ, dựng thành mô hình 3D từ OSM và Open Buildings | https://huynhnd53.github.io/hGame/newmap/ |
 | [`tiltpad/`](tiltpad/) | Tilt Pad: xoay điện thoại, khối 3D trên máy tính xoay theo (WebRTC) | https://huynhnd53.github.io/hGame/tiltpad/ |
 | [`tiltpad/`](tiltpad/) | Chém hoa quả: điện thoại làm thanh kiếm, dùng chung kết nối của Tilt Pad | https://huynhnd53.github.io/hGame/tiltpad/fruit.html |
+| [`tiltpad/`](tiltpad/) | Pickleball: góc nhìn thứ ba, điện thoại làm vợt | https://huynhnd53.github.io/hGame/tiltpad/pickleball.html |
 
 Trang chào ở gốc (`index.html`) dẫn tới các dự án: https://huynhnd53.github.io/hGame/
 

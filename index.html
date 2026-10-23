@@ -13,6 +13,7 @@
         --ink: #eceae6;
         --muted: #9aa0a6;
         --accent: #e8734a;
+        --gold: #ffc857;
         color-scheme: dark;
         font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
       }
@@ -24,75 +25,137 @@
         min-height: 100vh;
         background: var(--bg);
         color: var(--ink);
-        display: grid;
-        place-content: center;
         padding: 32px 16px;
       }
-      h1 {
-        margin: 0 0 6px;
-        font-size: 28px;
-      }
-      .lead {
-        margin: 0 0 24px;
-        color: var(--muted);
-      }
-      .apps {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-        gap: 14px;
-        max-width: 720px;
-      }
-      a.app {
-        display: block;
-        padding: 18px 20px;
+      main { max-width: 960px; margin: 0 auto; }
+      .hero {
+        padding: 28px 24px;
         border: 1px solid var(--line);
-        border-radius: 12px;
-        background: var(--card);
-        color: inherit;
-        text-decoration: none;
+        border-radius: 16px;
+        background: radial-gradient(circle at 85% 20%, rgba(232, 115, 74, 0.25), transparent 55%), var(--card);
       }
-      a.app:hover,
-      a.app:focus-visible {
-        border-color: var(--accent);
+      .hero h1 { margin: 0 0 8px; font-size: clamp(28px, 5vw, 40px); line-height: 1.15; }
+      .lead { margin: 0 0 20px; color: var(--muted); font-size: 17px; line-height: 1.5; max-width: 640px; }
+      .steps {
+        list-style: none; margin: 0 0 22px; padding: 0;
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;
       }
-      a.app h2 {
-        margin: 0 0 6px;
-        font-size: 18px;
+      .steps li { display: flex; gap: 10px; align-items: flex-start; line-height: 1.45; font-size: 15px; }
+      .steps b.n {
+        flex: none; width: 28px; height: 28px; border-radius: 50%;
+        background: var(--gold); color: #1c1f4a; display: grid; place-items: center;
       }
-      a.app p {
-        margin: 0;
-        color: var(--muted);
-        font-size: 14px;
-        line-height: 1.45;
+      .cta {
+        display: inline-block; padding: 12px 20px; border-radius: 12px;
+        background: var(--gold); color: #1c1f4a; font-weight: 800; text-decoration: none;
       }
+      .cta:hover, .cta:focus-visible { filter: brightness(1.08); }
+      .cta-note { margin: 10px 0 0; color: var(--muted); font-size: 14px; }
+      h2 { margin: 28px 0 12px; font-size: 20px; }
+      .games { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+      a.game {
+        display: flex; flex-direction: column; overflow: hidden;
+        border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: inherit; text-decoration: none;
+      }
+      a.game:hover, a.game:focus-visible, a.app:hover, a.app:focus-visible { border-color: var(--accent); }
+      a.game .art { height: 120px; display: grid; place-items: center; }
+      a.game .art svg { height: 92px; }
+      a.game .body { padding: 14px 18px 16px; }
+      a.game h3 { margin: 0 0 6px; font-size: 18px; }
+      a.game p, a.app p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
+      /* Các dự án không phải game điện thoại: để riêng, nhỏ hơn */
+      .others { margin-top: 32px; padding-top: 18px; border-top: 1px solid var(--line); }
+      .others h2 { margin: 0; font-size: 15px; color: var(--muted); font-weight: 600; }
+      .others .apps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin-top: 10px; }
+      a.app {
+        display: block; padding: 12px 16px; border: 1px solid var(--line); border-radius: 10px;
+        color: inherit; text-decoration: none;
+      }
+      a.app h3 { margin: 0 0 4px; font-size: 15px; }
     </style>
   </head>
   <body>
     <main>
-      <h1>hGame</h1>
-      <p class="lead">Các dự án trong repo này.</p>
-      <div class="apps">
-        <a class="app" href="./vgang-online/">
-          <h2>Vgang Online</h2>
-          <p>Game 3D lái xe máy dạo phố về đêm, nhìn từ góc người lái.</p>
+      <section class="hero">
+        <h1>Chơi game bằng điện thoại</h1>
+        <p class="lead">
+          Mở game trên máy tính, điện thoại làm tay cầm: cảm biến xoay trong máy gửi thẳng tới màn hình. Không cần cài app,
+          không cần tài khoản.
+        </p>
+        <ol class="steps">
+          <li><b class="n">1</b><span>Mở trang chọn game trên <b>máy tính</b>.</span></li>
+          <li><b class="n">2</b><span>Quét mã QR bằng <b>app Camera</b> của điện thoại, bấm Kết nối.</span></li>
+          <li><b class="n">3</b><span><b>Chọn game</b> trên máy tính hoặc ngay trên điện thoại, đổi game không phải quét lại.</span></li>
+        </ol>
+        <a class="cta" href="./tiltpad/">Kết nối điện thoại và chọn game →</a>
+        <p class="cta-note">Không có điện thoại vẫn chơi được bằng chuột và bàn phím.</p>
+      </section>
+
+      <h2>Game</h2>
+      <div class="games">
+        <a class="game" href="./tiltpad/fruit.html">
+          <div class="art" style="background: linear-gradient(135deg, #6b4527, #3e2614)">
+            <svg viewBox="0 0 120 100" aria-hidden="true">
+              <path d="M10 40 A50 50 0 0 0 110 40 Z" fill="#2f9e44" />
+              <path d="M16 40 A44 44 0 0 0 104 40 Z" fill="#d7f5c9" />
+              <path d="M21 40 A39 39 0 0 0 99 40 Z" fill="#ff4d5e" />
+              <g fill="#1d1d1d">
+                <ellipse cx="45" cy="55" rx="2.5" ry="4" /><ellipse cx="60" cy="62" rx="2.5" ry="4" /><ellipse cx="75" cy="55" rx="2.5" ry="4" />
+                <ellipse cx="52" cy="70" rx="2.5" ry="4" /><ellipse cx="68" cy="70" rx="2.5" ry="4" />
+              </g>
+              <path d="M8 20 L112 64" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".9" />
+            </svg>
+          </div>
+          <div class="body">
+            <h3>Chém hoa quả</h3>
+            <p>Điện thoại là thanh kiếm: chĩa vào màn hình, vung qua quả để chém, tránh bom.</p>
+          </div>
         </a>
-        <a class="app" href="./newmap/">
-          <h2>Dựng khu thật</h2>
-          <p>Vẽ một khu trên bản đồ, dựng thành mô hình 3D từ OpenStreetMap và Open Buildings.</p>
+        <a class="game" href="./tiltpad/pickleball.html">
+          <div class="art" style="background: linear-gradient(135deg, #2d62b0, #3f8a5c)">
+            <svg viewBox="0 0 120 100" aria-hidden="true">
+              <g transform="rotate(-30 50 55)">
+                <rect x="44" y="62" width="12" height="32" rx="4" fill="#222" />
+                <ellipse cx="50" cy="40" rx="26" ry="30" fill="#ffd23f" />
+                <ellipse cx="50" cy="40" rx="20" ry="24" fill="none" stroke="#e0a800" stroke-width="2" />
+              </g>
+              <circle cx="95" cy="26" r="11" fill="#e8ff3a" />
+              <g fill="#9bb000"><circle cx="91" cy="22" r="2" /><circle cx="99" cy="25" r="2" /><circle cx="94" cy="31" r="2" /></g>
+            </svg>
+          </div>
+          <div class="body">
+            <h3>Pickleball</h3>
+            <p>Đánh với máy, nhìn từ sau lưng nhân vật. Điện thoại là cây vợt, vung đúng lúc để đánh.</p>
+          </div>
         </a>
-        <a class="app" href="./tiltpad/fruit.html">
-          <h2>Chém hoa quả</h2>
-          <p>Điện thoại là thanh kiếm: chĩa vào màn hình máy tính, vung qua quả để chém. Không có điện thoại thì dùng chuột.</p>
-        </a>
-        <a class="app" href="./tiltpad/pickleball.html">
-          <h2>Pickleball</h2>
-          <p>Đánh pickleball với máy, nhìn từ sau lưng nhân vật. Điện thoại là cây vợt, vung đúng lúc để đánh.</p>
-        </a>
-        <a class="app" href="./tiltpad/">
-          <h2>Chơi bằng điện thoại</h2>
-          <p>Giới thiệu và chọn game: kết nối điện thoại một lần, rồi chơi Chém hoa quả, Pickleball, Khối 3D mà không phải quét lại mã.</p>
+        <a class="game" href="./tiltpad/cube.html">
+          <div class="art" style="background: radial-gradient(circle at 50% 40%, #2a2e6e, #0d0f26 75%)">
+            <svg viewBox="0 0 120 100" aria-hidden="true">
+              <path d="M60 12 L98 32 L60 52 L22 32 Z" fill="#ffc857" />
+              <path d="M22 32 L60 52 L60 92 L22 72 Z" fill="#5ed6b5" />
+              <path d="M98 32 L60 52 L60 92 L98 72 Z" fill="#ff6b8a" />
+            </svg>
+          </div>
+          <div class="body">
+            <h3>Khối 3D</h3>
+            <p>Xoay điện thoại, khối trên màn hình xoay theo y hệt. Thử cảm biến và độ trễ.</p>
+          </div>
         </a>
       </div>
+
+      <section class="others">
+        <h2>Dự án khác</h2>
+        <div class="apps">
+          <a class="app" href="./vgang-online/">
+            <h3>Vgang Online</h3>
+            <p>Game 3D lái xe máy dạo phố về đêm, nhìn từ góc người lái.</p>
+          </a>
+          <a class="app" href="./newmap/">
+            <h3>Dựng khu thật</h3>
+            <p>Vẽ một khu trên bản đồ, dựng thành mô hình 3D từ OpenStreetMap và Open Buildings.</p>
+          </a>
+        </div>
+      </section>
     </main>
   </body>
 </html>

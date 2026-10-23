@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pickleball – Tilt Pad</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.4/dist/mqtt.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="link.js"></script>
+<style>
+  body.pb { padding: 0; overflow: hidden; height: 100vh; }
+  #stage { /* style.css đặt #stage là khung 4:3 cho trang khối 3D; ở đây sân phủ kín màn hình */
+    aspect-ratio: auto; max-height: none; border-radius: 0; width: auto; height: auto;
+    position: fixed; inset: 0; overflow: hidden; user-select: none; -webkit-user-select: none; touch-action: none;
+    background: linear-gradient(#9fd3ff, #d8efff 55%, #6aa86a 55%); }
+  #gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .board { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); display: flex; align-items: stretch;
+    border-radius: 14px; overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,.3); pointer-events: none; font-weight: 800; }
+  .board > div { padding: .35rem .9rem; display: flex; align-items: center; gap: .5rem; color: #fff; font-size: 1.15rem; }
+  .board .me { background: #2f6fff; } .board .ai { background: #e2463c; }
+  .board b { font-size: 1.9rem; line-height: 1; min-width: 1.4ch; text-align: center; }
+  .board i { font-style: normal; width: .7rem; height: .7rem; border-radius: 50%; background: #ffe14d; visibility: hidden; }
+  .board i.on { visibility: visible; }
+  .link-pill { position: absolute; left: 12px; bottom: 12px; display: flex; align-items: center; gap: .5rem; pointer-events: none;
+    background: rgba(13,15,38,.7); color: #fff; padding: .35rem .8rem; border-radius: 999px; font-size: .9rem; }
+  #hint { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); background: rgba(13,15,38,.7); color: #fff;
+    padding: .4rem 1rem; border-radius: 999px; font-weight: 700; pointer-events: none; white-space: nowrap; }
+  #hint:empty { display: none; }
+  #banner { position: absolute; left: 50%; top: 32%; transform: translate(-50%, -50%); color: #fff; font-weight: 800; font-size: 2.6rem;
+    text-shadow: 0 4px 14px rgba(0,0,0,.55); pointer-events: none; text-align: center; white-space: nowrap; }
+  #banner small { display: block; font-size: 1.2rem; opacity: .9; }
+  #popups { position: absolute; inset: 0; pointer-events: none; }
+  #popups div { position: absolute; transform: translate(-50%, -50%); font-weight: 800; color: #fff; font-size: 1.3rem;
+    text-shadow: 0 3px 8px rgba(0,0,0,.6); animation: rise 1s ease-out forwards; white-space: nowrap; }
+  #popups div.good { color: #ffe14d; }
+  @keyframes rise { from { opacity: 1; margin-top: 0; } to { opacity: 0; margin-top: -50px; } }
+  .panel { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(13,15,38,.35); }
+  .panel .card { width: min(600px, 100%); max-height: calc(100vh - 32px); overflow: auto; box-shadow: 0 20px 60px rgba(0,0,0,.45); }
+  .panel h1 { font-size: 2.2rem; }
+  .connect { display: grid; grid-template-columns: auto 1fr; gap: 1rem; align-items: center; margin: .75rem 0; }
+  .connect .code { font-size: 3rem; text-align: left; margin: 0; }
+  .connect #qr { margin: 0; }
+  .how { margin: .5rem 0 .75rem; padding-left: 1.2rem; }
+  .how li { margin: .2rem 0; line-height: 1.4; }
+  .buttons { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; margin-top: .5rem; }
+  .buttons .ghost { margin-top: 0; }
+  .level { display: flex; gap: .4rem; margin: .4rem 0; flex-wrap: wrap; align-items: center; }
+  .level button { border: 2px solid var(--line); border-radius: 12px; padding: .35rem .9rem; font-weight: 700; }
+  .level button.on { background: var(--ball); color: #1C1F4A; border-color: var(--ball); }
+  .big-score { font-size: 3.4rem; font-weight: 800; color: var(--ball); line-height: 1; margin: .25rem 0; }
+  kbd { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 0 .35rem; font: inherit; font-weight: 700; }
+  .hidden { display: none !important; }
+  @media (max-width: 640px) { .connect { grid-template-columns: 1fr; } .connect .code { text-align: center; } }
+</style>
+</head>
+<body class="pb">
+<div id="stage">
+  <canvas id="gl" aria-label="Sân pickleball"></canvas>
+  <div class="board" aria-live="polite">
+    <div class="me"><i id="srvMe"></i>BẠN <b id="scoreMe">0</b></div>
+    <div class="ai"><b id="scoreAi">0</b> MÁY<i id="srvAi"></i></div>
+  </div>
+  <div id="popups"></div>
+  <div id="banner"></div>
+  <div id="hint"></div>
+  <div class="link-pill"><span class="dot" id="padDot"></span><span id="padText">Chưa có điện thoại</span></div>
+
+  <div class="panel" id="menu">
+    <div class="card">
+      <h1>Pickleball</h1>
+      <p class="muted">Điện thoại là cây vợt. Nhân vật tự chạy tới bóng, anh chỉ cần vung đúng lúc.</p>
+      <div class="connect">
+        <div>
+          <div class="code" id="codeOut">····</div>
+          <p class="muted">Quét mã hoặc mở <b id="padUrl"></b> và nhập mã</p>
+        </div>
+        <div id="qr"></div>
+      </div>
+      <ol class="how">
+        <li>Cầm điện thoại như cầm vợt, đầu máy chĩa vào màn hình, bấm <b>CĂN GIỮA</b>.</li>
+        <li><b>Vung</b> khi bóng tới người: vung vừa là đánh thường, <b>vung nhẹ</b> là bỏ nhỏ vào vùng cấm, <b>vung thật mạnh</b>
+          là đập, <b>hất từ dưới lên</b> là lốp bóng qua đầu đối thủ.</li>
+        <li>Vung <b>sớm</b> bóng đi sang trái, vung <b>muộn</b> bóng sang phải. Vung đúng lúc thì bóng chắc và khó hỏng.</li>
+        <li>Luật: giao chéo sân và phải qua vùng cấm; hai cú đầu sau giao phải để bóng nảy; không đỡ bóng khi bóng nảy 2 lần;
+          chạm lưới hoặc ra ngoài là mất điểm. Ai thắng pha bóng được 1 điểm và giao tiếp. Tới 11, hơn 2 điểm là thắng.</li>
+        <li>Không có điện thoại: <kbd>Space</kbd> hoặc bấm chuột là đánh, <kbd>Z</kbd> bỏ nhỏ, <kbd>X</kbd> lốp, <kbd>C</kbd> đập.
+          Chuột đặt bên trái/phải màn hình để nhắm.</li>
+      </ol>
+      <div class="level" id="level"><span class="muted">Máy chơi:</span>
+        <button data-l="0">Dễ</button><button data-l="1" class="on">Vừa</button><button data-l="2">Khó</button></div>
+      <div class="buttons">
+        <button class="primary" id="playBtn">Bắt đầu</button>
+        <button class="ghost" id="demoBtn">Xem máy đấu máy</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel hidden" id="over">
+    <div class="card">
+      <h1 id="overTitle">Thắng!</h1>
+      <div class="big-score" id="overScore">11 – 5</div>
+      <p class="muted" id="overStats"></p>
+      <div class="buttons">
+        <button class="primary" id="againBtn">Chơi lại</button>
+        <button class="ghost" id="menuBtn">Về menu</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="pickleball.js"></script>
+</body>
+</html>

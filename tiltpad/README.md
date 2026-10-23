@@ -37,6 +37,27 @@ Quả dựng bằng three.js trong `public/fruits.js` (không cần file mô hì
 có mặt cắt vẽ ruột trên canvas; chuối là ống cong. Thêm quả mới: thêm một hàm dựng và một dòng trong `TYPES`.
 Phần game nằm trong `public/fruit.js`.
 
+## Game: Pickleball (`pickleball.html`)
+
+https://huynhnd53.github.io/hGame/tiltpad/pickleball.html
+
+- Đánh đơn với máy trên sân pickleball thật (6,1 × 13,4 m, vùng cấm 2,13 m, lưới 0,86–0,91 m), camera sau lưng nhân vật.
+- Nhân vật tự chạy tới chỗ bóng (giống Wii Tennis); người chơi chỉ vung. Vòng vàng trên sân là chỗ bóng sắp nảy,
+  vòng đỏ là bóng sẽ ra ngoài (nhân vật tự bỏ).
+- Điện thoại (`pad.html?game=pickle`): tốc độ xoay của máy quyết định kiểu đánh: dưới ~520°/s bỏ nhỏ, ~520–820°/s
+  đánh thường, ~820–1100°/s đánh mạnh, trên ~1100°/s đập (bóng cao). Hất đầu máy lên là lốp. Điện thoại gửi kèm giờ
+  của nó (`ts`) để tốc độ vung không bị lệch vì mạng.
+- Vung đúng lúc (khoảng 0,05 s trước khi bóng tới vợt) thì cú đánh chắc; vung sớm bóng sang trái, muộn sang phải, càng
+  lệch càng dễ hỏng.
+- Bàn phím/chuột: `Space` hoặc bấm chuột là đánh, `Z` bỏ nhỏ, `X` lốp, `C` đập; vị trí chuột trái/phải để nhắm.
+- Luật: giao chéo, bóng giao phải qua vùng cấm; hai cú đầu sau giao phải để bóng nảy; không vô-lê trong vùng cấm;
+  chạm lưới, ra ngoài hoặc để bóng nảy hai lần là mất điểm. Tính điểm kiểu rally (pha nào cũng có điểm, người thắng
+  pha giao tiếp), tới 11 hơn 2 điểm. Máy có ba mức: Dễ, Vừa, Khó.
+- `pickleball.html?demo`: máy đấu máy để xem.
+
+Vật lý chạy bước cố định 1/120 s (trọng lực, nảy mất ~38% vận tốc đứng). Cả người và máy dùng chung một hàm mô phỏng
+trước đường bóng để tìm điểm đỡ nên dự đoán khớp tuyệt đối. Phần game nằm trong `public/pickleball.js`.
+
 ## Cách hoạt động
 
 ```
@@ -83,10 +104,10 @@ hệ trục điện thoại: X sang phải, Y lên đỉnh máy, Z chĩa ra kh�
 
 | Hướng            | Tin                         | Ý nghĩa                                   |
 |------------------|-----------------------------|-------------------------------------------|
-| pad → máy tính   | `{t:"orient", a, b, g, o}`  | góc (độ) và góc xoay màn hình, ~60 lần/giây |
+| pad → máy tính   | `{t:"orient", a, b, g, o, ts}` | góc (độ), góc xoay màn hình và giờ trên điện thoại (ms), ~60 lần/giây |
 | pad → máy tính   | `{t:"reset"}`               | lấy tư thế hiện tại làm gốc              |
 | máy tính → pad   | `{t:"closed"}`              | màn hình máy tính đã đóng                 |
-| máy tính → pad   | `{t:"buzz", ms}`            | rung điện thoại (khi chém trúng, trúng bom) |
+| máy tính → pad   | `{t:"buzz", ms}`            | rung điện thoại (chém trúng, đánh trúng bóng, được điểm) |
 
 Qua đường trung gian, các tin trên được bọc trong `{p: mã điện thoại, k: "msg", m: tin}`; ngoài ra có `knock`/`here`,
 `hello`/`welcome`, `ping` và `bye` (điện thoại đóng trang; máy chủ MQTT cũng tự gửi khi điện thoại rớt mạng).

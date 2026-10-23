@@ -56,6 +56,12 @@ if (params.get("game") === "fruit") {
   $("reset").textContent = "CĂN GIỮA";
   document.querySelector("#controls .hint").textContent = "Chĩa đầu máy vào giữa màn hình máy tính rồi bấm.";
 }
+if (params.get("game") === "pickle") {
+  document.querySelector(".top h1").textContent = "Vợt pickleball";
+  document.querySelector("#live .hint").textContent = "Cầm như cầm vợt, vung khi bóng tới: vung nhẹ bỏ nhỏ, vung mạnh đập, hất lên lốp.";
+  $("reset").textContent = "CĂN GIỮA";
+  document.querySelector("#controls .hint").textContent = "Chĩa đầu máy vào màn hình máy tính rồi bấm.";
+}
 if (pre) $("codeIn").value = pre.toUpperCase();
 $("joinBtn").onclick = join;
 $("codeIn").addEventListener("keydown", e => { if (e.key === "Enter") join(); });
@@ -107,7 +113,8 @@ function onOrient(e){
   if (now - lastSend < 16) return;              // ~60 lần/giây
   lastSend = now;
   const o = (screen.orientation && screen.orientation.angle) ?? (window.orientation || 0);
-  link.send({ t: "orient", a: +e.alpha.toFixed(2), b: +e.beta.toFixed(2), g: +e.gamma.toFixed(2), o });
+  // ts: giờ trên điện thoại, để máy tính tính tốc độ vung không bị lệch vì mạng chậm/nhanh thất thường.
+  link.send({ t: "orient", a: +e.alpha.toFixed(2), b: +e.beta.toFixed(2), g: +e.gamma.toFixed(2), o, ts: Math.round(now) });
 }
 
 $("reset").onclick = () => { if (joined) { link.send({ t: "reset" }); if (navigator.vibrate) navigator.vibrate(30); } };

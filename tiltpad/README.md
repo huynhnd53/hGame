@@ -91,6 +91,19 @@ hệ trục điện thoại: X sang phải, Y lên đỉnh máy, Z chĩa ra kh�
 Qua đường trung gian, các tin trên được bọc trong `{p: mã điện thoại, k: "msg", m: tin}`; ngoài ra có `knock`/`here`,
 `hello`/`welcome`, `ping` và `bye` (điện thoại đóng trang; máy chủ MQTT cũng tự gửi khi điện thoại rớt mạng).
 
+## Kiểm tra kết nối (`check.html`)
+
+https://huynhnd53.github.io/hGame/tiltpad/check.html – mở trên cả máy tính và điện thoại để biết vì sao WebRTC không thông:
+
+1. **Trình duyệt:** có đang mở trong Zalo/Facebook không, HTTPS, có WebRTC và thư viện không.
+2. **Máy chủ:** vào được máy chủ ghép cặp PeerJS và các máy chủ trung gian MQTT không, mất bao lâu.
+3. **ICE:** địa chỉ nội bộ (host), địa chỉ công khai qua STUN (srflx), NAT có đối xứng không, TURN của PeerJS (UDP và
+   TCP) có trả lời không.
+4. **Nối hai máy:** máy tính bấm "Mở phòng thử", điện thoại quét QR. Trang cho biết hai máy nối bằng cặp địa chỉ nào
+   (cùng mạng nội bộ / xuyên NAT / qua TURN) hoặc ICE chết ở bước nào, và đo độ trễ.
+
+Nút "Sao chép kết quả" chép toàn bộ ra chữ để gửi đi. Trang điện thoại hiện link tới đây khi không nối được.
+
 ## Lưu ý
 
 - `alpha` trên iOS là góc tương đối (không phải la bàn), nên khi mới kết nối khối có thể lệch hướng → bấm "Đặt lại gốc".

@@ -47,8 +47,7 @@ function newCode() {
 
 /** Mở kết nối MQTT tới mọi máy chủ trung gian; `onMessage(client, obj)` nhận tin đã giải JSON. */
 function relayClients(subTopic, will, { onConnect = () => {}, onMessage }) {
-  const urls = params.get("relay") ? [params.get("relay")] : RELAYS;
-  return urls.map((url) => {
+  return relayUrls().map((url) => {
     const c = mqtt.connect(url, {
       clientId: "hgtp-" + randomId(), clean: true, keepalive: 20, connectTimeout: 8000, reconnectPeriod: 3000,
       protocolVersion: 4, will: { topic: will.topic, payload: JSON.stringify(will.msg), qos: 0, retain: false },
@@ -287,5 +286,7 @@ function joinPad(code, { onOpen, onClosed, onError, onMessage = () => {} }) {
   };
 }
 
-window.TiltLink = { hostScreen, joinPad };
+// check.html dùng chung cấu hình máy chủ để kiểm tra đúng những gì game dùng.
+const relayUrls = () => (params.get("relay") ? [params.get("relay")] : RELAYS);
+window.TiltLink = { hostScreen, joinPad, peerOptions, ICE_SERVERS, relayUrls, PREFIX };
 })();

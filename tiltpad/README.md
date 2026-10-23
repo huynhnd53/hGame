@@ -66,7 +66,12 @@ https://huynhnd53.github.io/hGame/tiltpad/pickleball.html
   đánh thường, ~820–1100°/s đánh mạnh, trên ~1100°/s đập (bóng cao). Hất đầu máy lên là lốp. Điện thoại gửi kèm giờ
   của nó (`ts`) để tốc độ vung không bị lệch vì mạng.
 - Vung đúng lúc (khoảng 0,05 s trước khi bóng tới vợt) thì cú đánh chắc; vung sớm bóng sang trái, muộn sang phải, càng
-  lệch càng dễ hỏng.
+  lệch càng dễ hỏng. Vòng canh nhịp hiện ở chỗ vợt sẽ chạm bóng, co dần và chuyển xanh đúng lúc nên vung. Được vung
+  sớm tới 0,45 s và muộn tới 0,16 s (0,2 s khi dùng điện thoại); cú vung mới thay cú cũ chứ không bị chặn, và thời
+  điểm vung từ điện thoại được tính lùi theo độ trễ mạng (dựa vào giờ trên điện thoại).
+- Hoạt cảnh: lấy đà rồi quét vợt, mặt vợt chạm bóng đúng lúc bóng bay đi; tay giơ theo độ cao bóng, bóng thấp thì khom
+  người. Nhân vật tăng tốc, hãm lại mượt và đi bộ về chỗ giao bóng giữa hai điểm.
+- Vẽ mượt: vật lý bước cố định, khi vẽ nội suy giữa hai bước; độ phân giải tự hạ khi khung hình chậm (tối đa 1,5×).
 - Bàn phím/chuột: `Space` hoặc bấm chuột là đánh, `Z` bỏ nhỏ, `X` lốp, `C` đập; vị trí chuột trái/phải để nhắm.
 - Luật: giao chéo, bóng giao phải qua vùng cấm; hai cú đầu sau giao phải để bóng nảy; không vô-lê trong vùng cấm;
   chạm lưới, ra ngoài hoặc để bóng nảy hai lần là mất điểm. Tính điểm kiểu rally (pha nào cũng có điểm, người thắng

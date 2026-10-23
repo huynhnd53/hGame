@@ -116,6 +116,7 @@ const padUrl = (code) => {
 $("padUrl").textContent = padUrl().host + padUrl().pathname;
 
 const link = TiltLink.hostScreen({
+  game: "fruit",
   onCode(code) {
     $("codeOut").textContent = code;
     $("qr").innerHTML = "";
@@ -146,6 +147,7 @@ function setPadText() {
     : "Chưa có điện thoại · đang chơi bằng chuột · phòng " + code;
 }
 const buzz = (ms) => link.broadcast({ t: "buzz", ms });
+$("hubBtn").onclick = () => link.goTo("hub");
 
 // ---------- Lưỡi kiếm ----------
 /** Vết kiếm gần đây (toạ độ màn hình) để vẽ và để biết tốc độ vung. */

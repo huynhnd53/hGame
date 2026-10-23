@@ -8,7 +8,10 @@
 (() => {
 "use strict";
 
-const PREFIX = "hgame-tiltpad-";               // tránh trùng ID với app khác trên máy chủ PeerJS chung
+const PREFIX = "hgame-tiltpad-";
+// Các trang dùng chung một phòng: chuyển game thì máy tính giữ mã cũ (?room=), điện thoại tự nối lại.
+const GAMES = { hub: "index.html", fruit: "fruit.html", pickle: "pickleball.html", cube: "cube.html" };
+const ROOM_KEY = "tiltpad.room";               // tránh trùng ID với app khác trên máy chủ PeerJS chung
 const TOPIC = "hgame/tiltpad/v1/";             // gốc chủ đề MQTT, mỗi phòng một nhánh
 const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ";
 const RELAYS = ["wss://broker.emqx.io:8084/mqtt", "wss://broker.hivemq.com:8884/mqtt"];
@@ -63,18 +66,39 @@ function relayClients(subTopic, will, { onConnect = () => {}, onMessage }) {
 }
 const publish = (c, topic, obj) => { if (c.connected) c.publish(topic, JSON.stringify(obj)); };
 
-/** Máy tính: mở một phòng, nhận góc xoay từ các điện thoại nối vào. Trả về hàm gửi tin ngược lại. */
-function hostScreen({ onCode, onPads, onMessage, onError }) {
+/** Đọc/ghi sessionStorage an toàn (chế độ riêng tư có thể chặn). */
+const store = {
+  get(k) { try { return sessionStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { sessionStorage.setItem(k, v); } catch {} },
+};
+
+/**
+ * Máy tính: mở một phòng, nhận góc xoay từ các điện thoại nối vào. `game` là tên trang (xem GAMES), được báo cho
+ * điện thoại để nó đổi chữ hướng dẫn. Điện thoại gửi {t:"pick", game} thì máy tính chuyển sang game đó.
+ */
+function hostScreen({ game = "cube", onCode, onPads, onMessage: onAppMessage, onError }) {
   const direct = new Set();     // DataConnection WebRTC
   const relayed = new Map();    // mã điện thoại → { c: máy chủ MQTT đang dùng, seen }
   let code = null, shown = false, peer = null, clients = [], peerErr = null;
-  let graceTimer = 0;
+  let graceTimer = 0, lastCount = 0;
+  // Giữ mã phòng của trang trước (cùng tab) để điện thoại nối lại được.
+  const keep = [params.get("room"), store.get(ROOM_KEY)].find((c) => /^[A-Z]{4}$/.test(c || "")) || null;
 
-  const count = () => onPads(direct.size + relayed.size, { direct: direct.size, relay: relayed.size });
+  const count = () => {
+    const n = direct.size + relayed.size;
+    if (n > lastCount) broadcast({ t: "game", game });        // điện thoại mới vào: báo đang ở game nào
+    lastCount = n;
+    onPads(n, { direct: direct.size, relay: relayed.size });
+  };
   const show = () => {
     if (shown) return;
     shown = true; clearTimeout(graceTimer);
+    store.set(ROOM_KEY, code);
     onCode(code);
+  };
+  const onMessage = (msg) => {
+    if (msg && msg.t === "pick" && GAMES[msg.game]) { goTo(msg.game); return; }
+    onAppMessage(msg);
   };
   const up = () => TOPIC + code + "/up";
   const down = () => TOPIC + code + "/down";
@@ -91,8 +115,12 @@ function hostScreen({ onCode, onPads, onMessage, onError }) {
     });
     peer.on("error", (err) => {
       console.warn("[link] PeerJS:", err.type, err.message);
-      // Mã trùng với phòng đang mở ở nơi khác: lấy mã khác (khi mã chưa hiện ra).
-      if (err.type === "unavailable-id" && !shown && tries < 5) { stopAll(); start(tries + 1); return; }
+      // Mã còn bị trang trước giữ (vừa chuyển game): chờ chút rồi thử lại. Trùng với phòng nơi khác: lấy mã khác.
+      if (err.type === "unavailable-id" && !shown && tries < 8) {
+        stopAll();
+        if (keep && tries < 5) setTimeout(() => start(tries + 1), 700); else start(tries + 1);
+        return;
+      }
       if (err.type === "peer-unavailable") return;   // không xảy ra ở phía máy tính, phòng xa
       if (peer && !peer.open) {
         peerErr = err;
@@ -137,7 +165,7 @@ function hostScreen({ onCode, onPads, onMessage, onError }) {
   };
 
   const start = (tries) => {
-    code = newCode(); peerErr = null;
+    code = keep && tries < 5 ? keep : newCode(); peerErr = null;
     if (useP2P) startPeer(tries);
     if (useRelay) startRelay();
     if (!useP2P && !useRelay) onError({ type: "no-transport", message: "Không tải được thư viện kết nối" });
@@ -151,15 +179,25 @@ function hostScreen({ onCode, onPads, onMessage, onError }) {
     for (const [p, pad] of relayed) if (now - pad.seen > PAD_SILENT_MS) { relayed.delete(p); count(); }
   }, 3000);
 
-  const broadcast = (msg) => {
+  function broadcast(msg) {
     for (const conn of direct) { try { conn.send(msg); } catch {} }
     for (const c of new Set([...relayed.values()].map((pad) => pad.c))) publish(c, down(), { k: "msg", m: msg });
-  };
+  }
+  /** Sang trang game khác, giữ mã phòng; điện thoại được báo trước để tự nối lại. */
+  function goTo(next) {
+    if (!GAMES[next]) return;
+    const u = new URL(GAMES[next], location.href);
+    if (code) u.searchParams.set("room", code);
+    for (const k of ["peer", "relay", "via", "debug"]) if (params.has(k)) u.searchParams.set(k, params.get(k));
+    broadcast({ t: "switch", game: next });
+    setTimeout(() => { location.href = u.href; }, 120);
+  }
   addEventListener("pagehide", () => { broadcast({ t: "closed" }); stopAll(); });
 
   return {
     /** Gửi tin tới mọi điện thoại đang nối (ví dụ {t:"buzz", ms} để rung). */
     broadcast,
+    goTo,
   };
 }
 
@@ -272,6 +310,12 @@ function joinPad(code, { onOpen, onClosed, onError, onMessage = () => {} }) {
 
   const flush = () => { flushTimer = 0; if (pending) { publish(bound, up, { p: pid, k: "msg", m: pending }); pending = null; } };
   return {
+    /** Đóng hẳn (trước khi nối lại phòng sau khi máy tính chuyển game). */
+    close() {
+      ended = true; timers.forEach(clearTimeout); clearInterval(pingTimer); clearTimeout(flushTimer);
+      if (mode === "relay") publish(bound, up, { p: pid, k: "bye" });
+      mode = null; stopP2P(); stopRelay(null);
+    },
     send(msg) {
       if (mode === "p2p") { if (conn && conn.open) conn.send(msg); return; }
       if (mode !== "relay") return;
@@ -288,5 +332,5 @@ function joinPad(code, { onOpen, onClosed, onError, onMessage = () => {} }) {
 
 // check.html dùng chung cấu hình máy chủ để kiểm tra đúng những gì game dùng.
 const relayUrls = () => (params.get("relay") ? [params.get("relay")] : RELAYS);
-window.TiltLink = { hostScreen, joinPad, peerOptions, ICE_SERVERS, relayUrls, PREFIX };
+window.TiltLink = { hostScreen, joinPad, peerOptions, ICE_SERVERS, relayUrls, PREFIX, GAMES };
 })();

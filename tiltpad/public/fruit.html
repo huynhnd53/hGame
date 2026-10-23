@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chém hoa quả – Tilt Pad</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="link.js"></script>
+<script src="fruits.js"></script>
+<style>
+  body.fruit { padding: 0; overflow: hidden; height: 100vh; }
+  #stage {
+    /* style.css đặt #stage là khung 4:3 cho trang khối 3D; ở đây sân chơi phủ kín màn hình */
+    aspect-ratio: auto; max-height: none; border-radius: 0; width: auto; height: auto;
+    position: fixed; inset: 0; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none;
+    /* bàn gỗ */
+    background:
+      radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 40%, rgba(0,0,0,.55) 100%),
+      repeating-linear-gradient(90deg, rgba(0,0,0,.35) 0 3px, transparent 3px 160px),
+      repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 2px, transparent 2px 9px),
+      linear-gradient(90deg, #5a3820, #6b4527 30%, #573620 55%, #6e472a 80%, #5a3820);
+    cursor: crosshair;
+  }
+  #stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #trail { pointer-events: none; }
+  .hud { position: absolute; top: 14px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,.5); }
+  .score b { display: block; font-size: 2.6rem; font-weight: 800; line-height: 1; color: #ffd23f; }
+  .score span { font-size: .95rem; opacity: .85; }
+  .lives { display: flex; gap: 6px; font-size: 2rem; font-weight: 800; }
+  .lives i { font-style: normal; color: rgba(255,255,255,.3); }
+  .lives i.lost { color: #ff4d5e; }
+  .link-pill { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); display: flex; align-items: center; gap: .5rem;
+    background: rgba(13,15,38,.7); color: #fff; padding: .35rem .8rem; border-radius: 999px; font-size: .95rem; pointer-events: none; }
+  .panel { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(13,15,38,.35); }
+  .panel .card { width: min(560px, 100%); max-height: calc(100vh - 32px); overflow: auto; box-shadow: 0 20px 60px rgba(0,0,0,.45); }
+  .panel h1 { font-size: 2.2rem; }
+  .connect { display: grid; grid-template-columns: auto 1fr; gap: 1rem; align-items: center; margin: .75rem 0; }
+  .connect .code { font-size: 3rem; text-align: left; margin: 0; }
+  .connect #qr { margin: 0; }
+  .how { margin: .5rem 0 .75rem; padding-left: 1.2rem; }
+  .how li { margin: .2rem 0; line-height: 1.4; }
+  .buttons { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: .5rem; }
+  .buttons .ghost { margin-top: 0; }
+  .big-score { font-size: 4rem; font-weight: 800; color: var(--ball); line-height: 1; margin: .25rem 0; }
+  .bar { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; gap: .75rem; align-items: center;
+    background: rgba(13,15,38,.75); color: #fff; padding: .5rem .6rem .5rem 1rem; border-radius: 999px; }
+  .bar .ghost { margin: 0; color: #fff; border-color: rgba(255,255,255,.3); padding: .35rem .9rem; }
+  #labels { position: absolute; inset: 0; pointer-events: none; }
+  #labels span { position: absolute; transform: translate(-50%, 0); color: #fff; font-weight: 800; font-size: 1.05rem;
+    text-shadow: 0 2px 6px rgba(0,0,0,.7); white-space: nowrap; }
+  #popups { position: absolute; inset: 0; pointer-events: none; }
+  #popups div { position: absolute; transform: translate(-50%, -50%); font-weight: 800; color: #fff; font-size: 1.6rem;
+    text-shadow: 0 3px 8px rgba(0,0,0,.6); animation: rise .9s ease-out forwards; white-space: nowrap; }
+  #popups div.combo { color: #ffd23f; font-size: 2.2rem; }
+  @keyframes rise { from { opacity: 1; margin-top: 0; } to { opacity: 0; margin-top: -60px; } }
+  #flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity .5s; }
+  .hidden { display: none !important; }
+  @media (max-width: 640px) { .connect { grid-template-columns: 1fr; } .connect .code { text-align: center; } }
+</style>
+</head>
+<body class="fruit">
+<div id="stage">
+  <canvas id="splats"></canvas>
+  <canvas id="gl" aria-label="Sân chém hoa quả"></canvas>
+  <canvas id="trail"></canvas>
+  <div id="labels"></div>
+  <div id="popups"></div>
+  <div id="flash"></div>
+
+  <div class="hud">
+    <div class="score"><b id="score">0</b><span>Kỷ lục <span id="best">0</span></span></div>
+    <div class="lives" id="lives" aria-label="Lượt còn lại"><i>✕</i><i>✕</i><i>✕</i></div>
+  </div>
+  <div class="link-pill"><span class="dot" id="padDot"></span><span id="padText">Chưa có điện thoại · đang chơi bằng chuột</span></div>
+
+  <div class="panel" id="menu">
+    <div class="card">
+      <h1>Chém hoa quả</h1>
+      <p class="muted">Điện thoại là thanh kiếm: chĩa vào màn hình, vung qua quả để chém. Tránh bom!</p>
+      <div class="connect">
+        <div>
+          <div class="code" id="codeOut">····</div>
+          <p class="muted">Quét mã hoặc mở <b id="padUrl"></b> và nhập mã</p>
+        </div>
+        <div id="qr"></div>
+      </div>
+      <ol class="how">
+        <li>Cầm điện thoại như điều khiển TV: mặt màn hình ngửa lên, đầu máy chĩa vào màn hình này.</li>
+        <li>Chĩa vào giữa màn hình rồi bấm <b>CĂN GIỮA</b> trên điện thoại.</li>
+        <li>Vung nhanh qua quả để chém. Bỏ lỡ 3 quả hoặc chém trúng bom là thua.</li>
+        <li>Chưa có điện thoại? Dùng chuột: lia nhanh qua quả là chém.</li>
+      </ol>
+      <div class="buttons">
+        <button class="primary" id="playBtn">Bắt đầu</button>
+        <button class="ghost" id="galleryBtn">Xem các loại quả</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel hidden" id="over">
+    <div class="card">
+      <h1 id="overTitle">Hết lượt!</h1>
+      <div class="big-score" id="overScore">0</div>
+      <p class="muted" id="overBest"></p>
+      <div class="buttons">
+        <button class="primary" id="againBtn">Chơi lại</button>
+        <button class="ghost" id="menuBtn">Về menu</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="bar hidden" id="galleryBar">
+    <span>Xem các loại quả · vung kiếm hoặc chuột qua quả để chém thử</span>
+    <button class="ghost" id="galleryBack">Về menu</button>
+  </div>
+</div>
+<script src="fruit.js"></script>
+</body>
+</html>

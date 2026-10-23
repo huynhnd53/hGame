@@ -19,6 +19,24 @@ Không cần server riêng: máy tính và điện thoại nối thẳng với n
   iOS chỉ cấp `DeviceOrientationEvent` cho trang HTTPS và chỉ sau khi người dùng chạm nút (`requestPermission()`),
   nên muốn thử iPhone với bản chạy trên máy thì mở qua `ngrok http 3000` (hoặc `npx localtunnel --port 3000`).
 
+## Game: Chém hoa quả (`fruit.html`)
+
+https://huynhnd53.github.io/hGame/tiltpad/fruit.html
+
+- Máy tính mở `fruit.html`, điện thoại quét QR (trang điện thoại tự thành "Thanh kiếm", nút "CĂN GIỮA").
+- Cầm điện thoại như điều khiển TV: mặt màn hình ngửa lên, đầu máy chĩa vào màn hình máy tính, bấm CĂN GIỮA.
+  Đầu máy chĩa tới đâu, lưỡi kiếm trên màn hình tới đó (±28° là từ giữa tới mép); vung nhanh qua quả để chém.
+- Quả bay lên theo đợt, càng nhiều điểm càng nhiều quả và bom. Bỏ lỡ 3 quả hoặc chém trúng bom là thua.
+  Chém từ 3 quả trong một lần vung được thưởng combo. Kỷ lục lưu trong trình duyệt.
+- Chém trúng thì điện thoại rung (Android; iPhone không cho trang web rung).
+- **Xem các loại quả**: bày 7 loại quả (dưa hấu, cam, táo, chuối, xoài, thanh long, dứa) và bom để chém thử, quả mọc
+  lại sau khi chém. Mở thẳng bằng `fruit.html?gallery`.
+- Không có điện thoại thì lia chuột qua quả là chém.
+
+Quả dựng bằng three.js trong `public/fruits.js` (không cần file mô hình): quả tròn là khối tiện quanh trục, hai nửa
+có mặt cắt vẽ ruột trên canvas; chuối là ống cong. Thêm quả mới: thêm một hàm dựng và một dòng trong `TYPES`.
+Phần game nằm trong `public/fruit.js`.
+
 ## Cách hoạt động
 
 ```
@@ -46,6 +64,7 @@ hệ trục điện thoại: X sang phải, Y lên đỉnh máy, Z chĩa ra kh�
 | pad → máy tính   | `{t:"orient", a, b, g, o}`  | góc (độ) và góc xoay màn hình, ~60 lần/giây |
 | pad → máy tính   | `{t:"reset"}`               | lấy tư thế hiện tại làm gốc              |
 | máy tính → pad   | `{t:"closed"}`              | màn hình máy tính đã đóng                 |
+| máy tính → pad   | `{t:"buzz", ms}`            | rung điện thoại (khi chém trúng, trúng bom) |
 
 Số điện thoại đang nối và việc nhập sai mã ("Không có phòng với mã này.") do PeerJS báo, không cần tin riêng.
 

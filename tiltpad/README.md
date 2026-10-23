@@ -76,6 +76,22 @@ https://huynhnd53.github.io/hGame/tiltpad/pickleball.html
 Vật lý chạy bước cố định 1/120 s (trọng lực, nảy mất ~38% vận tốc đứng). Cả người và máy dùng chung một hàm mô phỏng
 trước đường bóng để tìm điểm đỡ nên dự đoán khớp tuyệt đối. Phần game nằm trong `public/pickleball.js`.
 
+## Vgang Online: điện thoại làm tay lái (`pad.html?game=vgang`)
+
+Vgang Online (`../vgang-online/`, nút *Điện thoại*) dùng `link.js` này với `game: "vgang"`. Trang điện thoại chuyển
+sang chế độ *Tay lái*, phủ kín màn hình:
+
+- **Bắt buộc xoay ngang và cân bằng:** dựng dọc thì hiện "Xoay ngang điện thoại"; nằm ngang thì hiện thước thăng bằng,
+  giữ nghiêng dưới 4° trong 1 giây mới gửi `{t:"ready", on:true}` và bắt đầu gửi lệnh lái. Dựng dọc lại là
+  `{t:"ready", on:false}`, máy tính thôi nhận lệnh.
+- **Nhận hướng ngang:** theo `screen.orientation.angle` nếu màn hình tự xoay; máy khoá xoay thì đoán theo trọng lực
+  (trục "lên" viết theo trục máy, tính từ ma trận alpha/beta/gamma) và tự xoay giao diện 90°.
+- **Lái:** góc nghiêng = mép phải (theo người cầm) nhô lên bao nhiêu; ±35° là đánh lái hết, vùng chết 2,5°.
+  Giữ nửa phải là ga, nửa trái là phanh; hàng nút: còi, xi nhan, đèn, bốc đầu, góc nhìn, đề máy, chọn game khác.
+- Gửi `{t:"drive", s, th, br, lift, ts}` khi có thay đổi (tối đa ~30 lần/giây) và 5 lần/giây khi đứng yên.
+  Máy tính trả `{t:"hud", kmh, engine, light, signal}` 4 lần/giây và `{t:"buzz"}` khi va chạm, lật xe.
+- Giữ màn hình điện thoại sáng bằng Wake Lock khi đang nối (mọi game).
+
 ## Cách hoạt động
 
 ```
@@ -129,6 +145,10 @@ hệ trục điện thoại: X sang phải, Y lên đỉnh máy, Z chĩa ra kh�
 | máy tính → pad   | `{t:"game", game}`          | đang mở game nào (`hub`, `fruit`, `pickle`, `cube`) |
 | máy tính → pad   | `{t:"switch", game}`        | sắp chuyển sang game khác, chờ rồi tự nối lại |
 | pad → máy tính   | `{t:"pick", game}`          | chọn game từ điện thoại |
+| pad → máy tính   | `{t:"drive", s, th, br, lift, ts}` | Vgang: lái (-1…1), ga, phanh, bốc đầu |
+| pad → máy tính   | `{t:"ready", on}`           | Vgang: điện thoại đã nằm ngang và cân bằng (hoặc thôi) |
+| pad → máy tính   | `{t:"act", a}`              | Vgang: còi, xi nhan, đèn, đề máy, góc nhìn |
+| máy tính → pad   | `{t:"hud", kmh, engine, light, signal}` | Vgang: tốc độ và trạng thái để hiện trên điện thoại |
 
 Qua đường trung gian, các tin trên được bọc trong `{p: mã điện thoại, k: "msg", m: tin}`; ngoài ra có `knock`/`here`,
 `hello`/`welcome`, `ping` và `bye` (điện thoại đóng trang; máy chủ MQTT cũng tự gửi khi điện thoại rớt mạng).

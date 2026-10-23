@@ -26,6 +26,8 @@ export class Input {
   /** The on-screen wheelie button is held. */
   liftButton = false;
   onFirstInput: () => void = () => {};
+  /** Another controller (the phone as handlebars), merged with the keys and the touch stick; null when idle. */
+  external: () => { throttle: number; brake: number; steer: number; lift: boolean } | null = () => null;
   onTouchModeChange: (touch: boolean) => void = () => {};
 
   constructor(
@@ -134,12 +136,13 @@ export class Input {
     const kSteer = (k.has('KeyD') || k.has('ArrowRight') ? 1 : 0) - (k.has('KeyA') || k.has('ArrowLeft') ? 1 : 0);
     const sy = this.stick.y;
     const dead = (v: number) => (Math.abs(v) < 0.15 ? 0 : (v - Math.sign(v) * 0.15) / 0.85);
+    const ext = this.external();
     return {
-      throttle: Math.max(kThrottle, dead(Math.max(0, sy))),
-      brake: Math.max(kBrake, dead(Math.max(0, -sy))),
-      steer: Math.max(-1, Math.min(1, kSteer + dead(this.stick.x))),
+      throttle: Math.max(kThrottle, dead(Math.max(0, sy)), ext?.throttle ?? 0),
+      brake: Math.max(kBrake, dead(Math.max(0, -sy)), ext?.brake ?? 0),
+      steer: Math.max(-1, Math.min(1, kSteer + dead(this.stick.x) + (ext?.steer ?? 0))),
       // Lean back and snap the throttle: Shift or B, or the touch button.
-      lift: this.liftButton || k.has('ShiftLeft') || k.has('ShiftRight') || k.has('KeyB'),
+      lift: this.liftButton || k.has('ShiftLeft') || k.has('ShiftRight') || k.has('KeyB') || Boolean(ext?.lift),
     };
   }
 

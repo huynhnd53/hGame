@@ -4,6 +4,7 @@ import { Sound } from './audio/sound';
 import { drawClassicGauge } from './cockpit/classicGauge';
 import { Cockpit } from './cockpit/cockpit';
 import { type Action, Input } from './input/input';
+import { PhoneLink } from './input/phone';
 import { BIKES, bikeDef, wheelieDifficulty } from './cockpit/bikes';
 import { getFlag, getString, loadRide, type RideSave, saveRide, setFlag, setString } from './save';
 import { type Block, type City, generateCity, groundHeight, HALF, ROAD, SIDEWALK } from './sim/city';
@@ -25,6 +26,8 @@ const SAVE_INTERVAL = 2;
 const CRASH_TIME = 2.5;
 /** Wheelies shorter than this are not worth announcing. */
 const WHEELIE_REPORT_M = 3;
+/** How often the phone gets the speedometer and switch states. */
+const PHONE_HUD_INTERVAL = 0.25;
 const LANDMARK_NAMES: Partial<Record<Block['kind'], string>> = {
   lake: 'Hồ Sen',
   park: 'Công viên',
@@ -46,6 +49,7 @@ export class Game {
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(72, 1, 0.1, 600);
   readonly input: Input;
+  readonly phone = new PhoneLink();
   readonly cockpit: Cockpit;
   readonly sound = new Sound();
   readonly minimap: Minimap;
@@ -90,6 +94,8 @@ export class Game {
   private crashTimer = 0;
   private wheelieBest = Number(getString('wheelie-best')) || 0;
   private wheelieHudKey = '';
+  private phoneHudTimer = 0;
+  private phoneQr = '';
 
   constructor(canvas: HTMLCanvasElement) {
     const { spawn } = this.city;
@@ -143,6 +149,22 @@ export class Game {
     this.input = new Input($('app'), $('joystick'), $('joystick-knob'));
     this.input.onFirstInput = () => this.sound.unlock();
     this.input.onTouchModeChange = () => this.refreshChrome();
+    this.input.external = () => this.phone.controls();
+    this.phone.onAction = (a) => this.input.push(a);
+    this.phone.onChange = () => this.refreshPhone();
+    this.phone.onReady = () => {
+      // Phone sideways and level: close the bike picker, start the engine and ride.
+      $('panel').classList.add('hidden');
+      $('phone-panel').classList.add('hidden');
+      if (!this.engineOn) this.handle('engine');
+      this.toast('Điện thoại đã sẵn sàng, lái thôi!');
+    };
+    // Coming from the tiltpad game picker (?room=…) or asked for directly: reconnect the phone straight away.
+    const params = new URLSearchParams(location.search);
+    if (params.has('room') || params.has('phone')) {
+      void this.phone.start();
+      if (!params.has('room')) $('phone-panel').classList.remove('hidden');
+    }
 
     this.bindUi();
     this.resize();
@@ -249,6 +271,17 @@ export class Game {
     $('btn-help').addEventListener('click', () => $('panel').classList.remove('hidden'));
     $('btn-mute').addEventListener('click', () => this.handle('mute'));
     $('btn-view').addEventListener('click', () => this.handle('view'));
+    $('btn-phone').addEventListener('click', () => {
+      this.sound.unlock();
+      $('phone-panel').classList.toggle('hidden');
+      void this.phone.start();
+      this.refreshPhone();
+    });
+    $('phone-close').addEventListener('click', () => {
+      this.sound.unlock();
+      $('phone-panel').classList.add('hidden');
+    });
+    $('phone-hub').addEventListener('click', () => this.phone.goTo('hub'));
     $('rotate-dismiss').addEventListener('click', () => {
       setFlag('rotate-dismissed');
       this.refreshChrome();
@@ -381,13 +414,61 @@ export class Game {
     const prompt = $('prompt');
     const helpOpen = !$('panel').classList.contains('hidden');
     let html = '';
-    if (!this.engineOn && !helpOpen) {
+    const phone = this.phone;
+    if (phone.pads > 0 && !phone.ready) {
+      html = 'Xoay <b>ngang</b> điện thoại và giữ <b>thăng bằng</b> để bắt đầu lái';
+    } else if (phone.ready && this.sound.locked) {
+      html = 'Bấm vào màn hình máy tính một lần để bật âm thanh';
+    } else if (!this.engineOn && !helpOpen) {
       html = this.input.touchMode
         ? 'Chạm nút <b>Đề</b> (hoặc nút ⚡ trên tay lái) để nổ máy'
         : 'Nhấn <kbd>K</kbd> hoặc bấm nút ⚡ trên tay lái để nổ máy';
     }
     if (prompt.innerHTML !== html) prompt.innerHTML = html;
     prompt.classList.toggle('hidden', html === '');
+  }
+
+  /** Phone panel: room code, QR code and link status. */
+  private refreshPhone(): void {
+    const p = this.phone;
+    $('phone-code').textContent = p.code || '····';
+    $('phone-url').textContent = p.code ? p.padUrl().replace(/^https?:\/\//, '').replace(/\?.*$/, '') : '';
+    const status = p.error
+      ? p.error
+      : !p.code
+        ? 'Đang mở phòng…'
+        : p.pads === 0
+          ? 'Đang chờ điện thoại…'
+          : p.ready
+            ? `Điện thoại đang lái${p.relay ? ' (qua trung gian)' : ''}`
+            : 'Điện thoại đã kết nối: xoay ngang và giữ thăng bằng';
+    $('phone-status').textContent = status;
+    $('phone-dot').classList.toggle('live', p.pads > 0);
+    $('btn-phone').textContent = p.ready ? 'Điện thoại: đang lái' : p.pads ? 'Điện thoại: đã nối' : 'Điện thoại';
+    const url = p.code ? p.padUrl() : '';
+    if (url !== this.phoneQr && window.QRCode) {
+      this.phoneQr = url;
+      const box = $('phone-qr');
+      box.innerHTML = '';
+      if (url) new window.QRCode(box, { text: url, width: 150, height: 150 });
+    }
+    this.updatePrompt();
+  }
+
+  /** Speed and switch states for the phone's screen, plus a buzz on knocks. */
+  private updatePhoneHud(dt: number, impact: number): void {
+    if (this.phone.pads === 0) return;
+    if (impact > 1.2) this.phone.send({ t: 'buzz', ms: Math.min(300, Math.round(40 + impact * 20)) });
+    this.phoneHudTimer += dt;
+    if (this.phoneHudTimer < PHONE_HUD_INTERVAL) return;
+    this.phoneHudTimer = 0;
+    this.phone.send({
+      t: 'hud',
+      kmh: Math.round(Math.abs(this.scooter.speed) * 3.6),
+      engine: this.engineOn,
+      light: this.headlight,
+      signal: this.signal,
+    });
   }
 
   private resize(): void {
@@ -475,6 +556,7 @@ export class Game {
     this.crashTimer = CRASH_TIME;
     // The rider is off the bike: no handlebars in view while lying on the road.
     $('app').classList.add('crashed');
+    this.phone.send({ t: 'buzz', ms: 400 });
     this.scooter = { ...this.scooter, speed: 0, steer: 0 };
     this.engineOn = false;
     this.sound.setEngine(false);
@@ -609,6 +691,7 @@ export class Game {
       this.sound.bump(impact);
       this.shake = Math.min(0.6, impact * 0.06);
     }
+    this.updatePhoneHud(dt, impact);
     if (crashed) {
       this.crashTimer -= dt;
       if (this.crashTimer <= 0) {

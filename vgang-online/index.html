@@ -20,6 +20,7 @@
           <button class="btn" id="btn-mute" type="button">Âm thanh: bật</button>
           <button class="btn" id="btn-help" type="button">Đổi xe</button>
           <button class="btn" id="btn-view" type="button">Nhìn: sau xe</button>
+          <button class="btn" id="btn-phone" type="button">Điện thoại</button>
         </div>
         <canvas id="minimap" width="150" height="150" aria-label="Bản đồ"></canvas>
       </div>
@@ -43,6 +44,29 @@
         </div>
       </div>
 
+      <div id="phone-panel" class="hidden" role="dialog" aria-labelledby="phone-title">
+        <div class="phone-head">
+          <h2 id="phone-title">Lái bằng điện thoại</h2>
+          <button class="btn" id="phone-close" type="button" aria-label="Đóng">✕</button>
+        </div>
+        <div class="phone-body">
+          <div>
+            <div class="phone-code" id="phone-code">····</div>
+            <div id="phone-qr"></div>
+          </div>
+          <ol class="phone-steps">
+            <li>Quét mã bằng app Camera của điện thoại (hoặc mở <b id="phone-url"></b> và nhập mã).</li>
+            <li><b>Xoay ngang</b> điện thoại, cầm bằng hai tay như tay lái.</li>
+            <li>Giữ <b>thăng bằng</b> một giây: máy tự nổ, bắt đầu lái.</li>
+            <li>Nghiêng điện thoại để rẽ, giữ nửa phải là <b>ga</b>, nửa trái là <b>phanh</b>.</li>
+          </ol>
+        </div>
+        <div class="phone-foot">
+          <span class="phone-status"><span class="dot" id="phone-dot"></span><span id="phone-status">Đang mở phòng…</span></span>
+          <button class="btn" id="phone-hub" type="button">← Chọn game khác</button>
+        </div>
+      </div>
+
       <div id="rotate-hint" class="hidden">
         <span>Xoay ngang điện thoại để lái thoải mái hơn</span>
         <button class="btn" id="rotate-dismiss" type="button">Vẫn chơi dọc</button>
@@ -61,6 +85,7 @@
               <li>Nổ máy rồi thong thả chạy quanh phố. Không có điểm số, không có thời gian.</li>
               <li><b>Máy tính:</b> W/↑ ga, S/↓/Space phanh, A D hoặc ← → lái. K nổ máy, H bóp còi, Q E xi nhan, L bật đèn, M tắt tiếng, V đổi góc nhìn (tay lái / sau xe). Kéo chuột để quay đầu nhìn.</li>
               <li><b>Điện thoại:</b> kéo nửa trái màn hình: đẩy lên là ga, kéo xuống là phanh, sang hai bên là lái. Vuốt nửa phải để nhìn quanh.</li>
+              <li><b>Điện thoại làm tay lái</b> (game chạy trên máy tính): bấm nút <b>Điện thoại</b>, quét mã QR, xoay ngang điện thoại và giữ thăng bằng một giây để bắt đầu. Nghiêng để rẽ, giữ nửa phải màn hình điện thoại là ga, nửa trái là phanh.</li>
               <li>Có thể bấm thẳng vào nút trên tay lái: còi, đèn, xi nhan và nút đề.</li>
               <li><b>Bốc đầu:</b> khi đang chạy chậm, giữ <kbd>Shift</kbd> (hoặc <kbd>B</kbd>, hay nút <b>Bốc</b>) rồi vít ga để nhấc đầu xe. Khi lên tới vùng xanh thì thả Shift, nhấp nhả ga để giữ thăng bằng; ngửa quá thì bóp phanh để hạ đầu, không là lật xe. Côn tay dễ bốc nhất, tay ga khó nhất.</li>
               <li>Xe đã chọn, quãng đường và vị trí được lưu trên trình duyệt này.</li>

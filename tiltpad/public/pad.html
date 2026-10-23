@@ -10,9 +10,21 @@
 <script src="link.js"></script>
 </head>
 <body class="pad">
+<style>
+  [hidden] { display: none !important; }   /* style.css đặt display cho #live, phải ép ẩn */
+  .top h1 { white-space: nowrap; }
+  #games { display: flex; flex-direction: column; gap: .6rem; }
+  #games button { display: flex; flex-direction: column; align-items: flex-start; text-align: left; background: var(--surface);
+    border: 2px solid var(--line); border-radius: 18px; padding: .8rem 1rem; }
+  #games button b { font-size: 1.25rem; }
+  #games button span { color: var(--muted); font-size: .95rem; }
+  #games button.on { border-color: var(--ball); }
+  #pick { flex: 1; }
+  #hubBtn { display: block; margin: .6rem auto 0; }
+</style>
 <div>
   <div class="top">
-    <h1>Điện thoại</h1>
+    <h1 id="title">Điện thoại</h1>
     <span class="pill" id="padState">Chưa kết nối</span>
   </div>
   <div id="joinBox">
@@ -26,18 +38,28 @@
   </div>
 </div>
 
+<div id="pick" hidden>
+  <p class="muted" style="margin-bottom:.6rem">Chọn game, màn hình máy tính sẽ chuyển theo:</p>
+  <div id="games">
+    <button data-g="fruit"><b>Chém hoa quả</b><span>Điện thoại là thanh kiếm, vung qua quả để chém.</span></button>
+    <button data-g="pickle"><b>Pickleball</b><span>Điện thoại là cây vợt, vung đúng lúc để đánh.</span></button>
+    <button data-g="cube"><b>Khối 3D</b><span>Xoay điện thoại, khối trên màn hình xoay theo.</span></button>
+  </div>
+</div>
+
 <div id="live" hidden>
   <div class="readout">
     <div><span class="muted">alpha</span><b id="ra">0°</b></div>
     <div><span class="muted">beta</span><b id="rb">0°</b></div>
     <div><span class="muted">gamma</span><b id="rg">0°</b></div>
   </div>
-  <p class="hint muted">Xoay điện thoại thế nào, khối trên máy tính xoay thế ấy.</p>
+  <p class="hint muted" id="liveHint">Xoay điện thoại thế nào, khối trên máy tính xoay thế ấy.</p>
 </div>
 
 <div id="controls" hidden>
   <button id="reset">ĐẶT LẠI GỐC</button>
-  <p class="hint muted">Giữ máy ở tư thế muốn làm “thẳng” rồi bấm.</p>
+  <p class="hint muted" id="resetHint">Giữ máy ở tư thế muốn làm “thẳng” rồi bấm.</p>
+  <button class="ghost" id="hubBtn">Chọn game khác</button>
 </div>
 
 <script>
@@ -45,59 +67,99 @@
 "use strict";
 const $ = id => document.getElementById(id);
 let link = null;
-let joined = false;
+let joined = false, code = "", game = "cube", rejoinUntil = 0, rejoinTimer = 0;
+
+// Chữ theo game đang mở trên máy tính. Máy tính báo {t:"game"} khi điện thoại vào và {t:"switch"} khi chuyển game.
+const TEXTS = {
+  hub: { title: "Tay cầm", hint: "" },
+  cube: { title: "Điện thoại", hint: "Xoay điện thoại thế nào, khối trên máy tính xoay thế ấy.", reset: "ĐẶT LẠI GỐC",
+    resetHint: "Giữ máy ở tư thế muốn làm “thẳng” rồi bấm." },
+  fruit: { title: "Thanh kiếm", hint: "Cầm như điều khiển TV, đầu máy chĩa vào màn hình. Vung nhanh qua quả để chém.",
+    reset: "CĂN GIỮA", resetHint: "Chĩa đầu máy vào giữa màn hình máy tính rồi bấm." },
+  pickle: { title: "Vợt pickleball", hint: "Cầm như cầm vợt, vung khi bóng tới: vung nhẹ bỏ nhỏ, vung mạnh đập, hất lên lốp.",
+    reset: "CĂN GIỮA", resetHint: "Chĩa đầu máy vào màn hình máy tính rồi bấm." },
+};
+function applyGame(g) {
+  if (!TEXTS[g]) return;
+  game = g;
+  const t = TEXTS[g];
+  $("title").textContent = t.title;
+  if (t.hint) $("liveHint").textContent = t.hint;
+  if (t.reset) { $("reset").textContent = t.reset; $("resetHint").textContent = t.resetHint; }
+  layout();
+}
+// Đang ở trang chọn game: hiện danh sách game thay cho bảng góc xoay.
+function layout() {
+  $("joinBox").hidden = joined || rejoinUntil > Date.now();
+  $("pick").hidden = !joined || game !== "hub";
+  $("live").hidden = !joined || game === "hub";
+  $("controls").hidden = !joined || game === "hub";
+}
 
 const params = new URLSearchParams(location.search);
-const pre = params.get("c");
-// Chữ theo game đang chơi trên máy tính (?game=fruit: điện thoại là thanh kiếm).
-if (params.get("game") === "fruit") {
-  document.querySelector(".top h1").textContent = "Thanh kiếm";
-  document.querySelector("#live .hint").textContent = "Cầm như điều khiển TV, đầu máy chĩa vào màn hình. Vung nhanh qua quả để chém.";
-  $("reset").textContent = "CĂN GIỮA";
-  document.querySelector("#controls .hint").textContent = "Chĩa đầu máy vào giữa màn hình máy tính rồi bấm.";
-}
-if (params.get("game") === "pickle") {
-  document.querySelector(".top h1").textContent = "Vợt pickleball";
-  document.querySelector("#live .hint").textContent = "Cầm như cầm vợt, vung khi bóng tới: vung nhẹ bỏ nhỏ, vung mạnh đập, hất lên lốp.";
-  $("reset").textContent = "CĂN GIỮA";
-  document.querySelector("#controls .hint").textContent = "Chĩa đầu máy vào màn hình máy tính rồi bấm.";
-}
-if (pre) $("codeIn").value = pre.toUpperCase();
+if (params.get("c")) $("codeIn").value = params.get("c").toUpperCase();
+applyGame(params.get("game") || "cube");
 $("joinBtn").onclick = join;
 $("codeIn").addEventListener("keydown", e => { if (e.key === "Enter") join(); });
+for (const b of document.querySelectorAll("#games button")) b.onclick = () => { if (joined) link.send({ t: "pick", game: b.dataset.g }); };
+$("hubBtn").onclick = () => { if (joined) link.send({ t: "pick", game: "hub" }); };
 
 async function join(){
-  const code = $("codeIn").value.trim().toUpperCase();
+  const c = $("codeIn").value.trim().toUpperCase();
   $("joinErr").textContent = "";
-  if (!/^[A-Z]{4}$/.test(code)) { $("joinErr").textContent = "Mã gồm 4 chữ cái."; return; }
+  if (!/^[A-Z]{4}$/.test(c)) { $("joinErr").textContent = "Mã gồm 4 chữ cái."; return; }
   $("joinBtn").disabled = true;
 
   // iOS 13+: xin quyền ngay trong thao tác chạm, và chỉ hoạt động trên HTTPS
   const ok = await askMotionPermission();
   if (!ok) { $("joinErr").textContent = "Không được cấp quyền cảm biến. Cần mở trang qua HTTPS và bấm Cho phép."; $("joinBtn").disabled = false; return; }
+  code = c;
+  connect();
+}
 
-  $("joinErr").textContent = "Đang kết nối…";
+function connect() {
+  $("joinErr").textContent = rejoinUntil > Date.now() ? "" : "Đang kết nối…";
+  if (link) link.close();
   link = TiltLink.joinPad(code, {
     onOpen(mode) {
-      joined = true;
+      joined = true; rejoinUntil = 0;
       $("joinErr").textContent = "";
       $("padState").textContent = "Phòng " + code + (mode === "relay" ? " · qua trung gian" : " · trực tiếp");
-      $("joinBox").hidden = true; $("live").hidden = false; $("controls").hidden = false;
-      setTimeout(() => { if (!got) $("joinErr").textContent = "Chưa nhận được dữ liệu cảm biến – kiểm tra lại HTTPS."; }, 2000);
+      layout();
+      setTimeout(() => { if (!got && game !== "hub") $("joinErr").textContent = "Chưa nhận được dữ liệu cảm biến – kiểm tra lại HTTPS."; }, 2000);
     },
-    onClosed() { joined = false; $("padState").textContent = "Màn hình đã đóng"; },
-    onMessage(msg) { if (msg.t === "buzz" && navigator.vibrate) navigator.vibrate(Math.min(400, Number(msg.ms) || 30)); },
-    onError(text) { $("joinErr").textContent = text; $("joinBtn").disabled = false; $("checkLink").hidden = false; },
+    onClosed() {
+      // Máy tính chuyển game hoặc tải lại trang: chờ phòng mở lại rồi tự nối, khỏi nhập mã.
+      if (!joined) return;
+      joined = false;
+      if (!rejoinUntil) rejoinUntil = Date.now() + 30000;
+      $("padState").textContent = "Màn hình đã đóng · đang chờ mở lại…";
+      layout();
+      clearTimeout(rejoinTimer); rejoinTimer = setTimeout(connect, 1200);
+    },
+    onMessage(msg) {
+      if (msg.t === "buzz" && navigator.vibrate) navigator.vibrate(Math.min(400, Number(msg.ms) || 30));
+      if (msg.t === "game") applyGame(msg.game);
+      if (msg.t === "switch") { rejoinUntil = Date.now() + 30000; applyGame(msg.game); $("padState").textContent = "Đang chuyển game…"; }
+    },
+    onError(text) {
+      if (rejoinUntil > Date.now()) { clearTimeout(rejoinTimer); rejoinTimer = setTimeout(connect, 1500); return; }
+      if (rejoinUntil) { rejoinUntil = 0; $("padState").textContent = "Màn hình đã đóng"; layout(); }
+      $("joinErr").textContent = text; $("joinBtn").disabled = false; $("checkLink").hidden = false;
+    },
   });
 }
 
+let motionOn = false;
 async function askMotionPermission(){
+  if (motionOn) return true;
   try {
     if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
       if ((await DeviceOrientationEvent.requestPermission()) !== "granted") return false;
     }
   } catch (e) { return false; }
   addEventListener("deviceorientation", onOrient, true);
+  motionOn = true;
   return true;
 }
 
@@ -108,7 +170,7 @@ function onOrient(e){
   $("ra").textContent = e.alpha.toFixed(0) + "°";
   $("rb").textContent = e.beta.toFixed(0) + "°";
   $("rg").textContent = e.gamma.toFixed(0) + "°";
-  if (!joined) return;
+  if (!joined || game === "hub") return;
   const now = performance.now();
   if (now - lastSend < 16) return;              // ~60 lần/giây
   lastSend = now;
@@ -118,6 +180,7 @@ function onOrient(e){
 }
 
 $("reset").onclick = () => { if (joined) { link.send({ t: "reset" }); if (navigator.vibrate) navigator.vibrate(30); } };
+if (params.has("debug")) window.__pad = { get game() { return game; }, get joined() { return joined; } };
 })();
 </script>
 </body>

@@ -3,154 +3,157 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tilt Pad – màn hình máy tính</title>
+<title>Tilt Pad – chọn game</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.4/dist/mqtt.min.js"></script>
-<script src="link.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="link.js"></script>
+<style>
+  main { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 1rem; }
+  .top-row { display: grid; grid-template-columns: 1.4fr 1fr; gap: 1rem; }
+  .hero h1 { font-size: clamp(2rem, 4.5vw, 3rem); }
+  .hero .lead { font-size: 1.1rem; margin: .5rem 0 1rem; }
+  .steps { list-style: none; padding: 0; margin: 0; display: grid; gap: .7rem; }
+  .steps li { display: grid; grid-template-columns: 2.2rem 1fr; gap: .6rem; align-items: start; line-height: 1.4; }
+  .steps li > b:first-child { width: 2.2rem; height: 2.2rem; border-radius: 50%; background: var(--ball); color: #1C1F4A;
+    display: grid; place-items: center; font-size: 1.1rem; }
+  .tips { margin: 1rem 0 0; padding-left: 1.1rem; color: var(--muted); }
+  .tips li { margin: .2rem 0; }
+  .connect { display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .connect .code { margin: .2rem 0 .4rem; font-size: clamp(2.6rem, 6vw, 3.6rem); }
+  .connect #qr { margin: .2rem 0 .6rem; }
+  .connect .status { justify-content: center; }
+  h2 { margin: .25rem 0 .5rem; font-size: 1.4rem; }
+  .games { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+  .game { display: flex; flex-direction: column; text-decoration: none; color: inherit; background: var(--surface); border-radius: 20px;
+    overflow: hidden; border: 2px solid transparent; transition: transform .15s, border-color .15s; }
+  .game:hover, .game:focus-visible { transform: translateY(-3px); border-color: var(--ball); outline: none; }
+  .game .art { height: 130px; display: grid; place-items: center; }
+  .game .art svg { height: 100px; }
+  .game .body { padding: .8rem 1rem 1rem; display: flex; flex-direction: column; gap: .35rem; flex: 1; }
+  .game h3 { margin: 0; font-size: 1.3rem; }
+  .game p { margin: 0; }
+  .tags { display: flex; gap: .35rem; flex-wrap: wrap; margin-top: auto; padding-top: .4rem; }
+  .tags span { font-size: .8rem; font-weight: 700; padding: .15rem .55rem; border-radius: 999px; background: var(--bg); color: var(--muted); }
+  .play { font-weight: 800; color: var(--ink); margin-top: .3rem; }
+  footer { text-align: center; color: var(--muted); font-size: .9rem; padding: .5rem 0 1rem; }
+  footer a { color: inherit; }
+  @media (max-width: 760px) { .top-row { grid-template-columns: 1fr; } }
+</style>
 </head>
-<body class="game">
-<div class="wrap">
-  <div id="stage"><canvas id="board" aria-label="Khối 3D"></canvas></div>
-  <aside id="side">
-    <div class="card">
-      <p class="muted">Quét mã hoặc mở <b id="padUrl"></b> trên điện thoại và nhập</p>
+<body>
+<main>
+  <div class="top-row">
+    <section class="card hero">
+      <h1>Điện thoại thành tay cầm</h1>
+      <p class="lead muted">Mở game trên máy tính, điện thoại làm tay cầm: cảm biến xoay trong máy gửi thẳng tới máy tính.
+        Không cần cài app, không cần tài khoản.</p>
+      <ol class="steps">
+        <li><b>1</b><span>Mở trang này trên <b>máy tính</b> (màn hình càng to càng vui).</span></li>
+        <li><b>2</b><span>Dùng <b>app Camera</b> của điện thoại quét mã QR bên cạnh, bấm <b>Kết nối</b> và cho phép dùng cảm biến.</span></li>
+        <li><b>3</b><span><b>Chọn game</b> ở dưới, hoặc chọn ngay trên điện thoại. Đổi game không phải quét lại mã.</span></li>
+      </ol>
+      <ul class="tips">
+        <li>Hai máy cùng một mạng wifi thì mượt nhất.</li>
+        <li>Không có điện thoại vẫn chơi được bằng chuột và bàn phím.</li>
+        <li>Không nối được? Mở <a href="check.html">trang kiểm tra kết nối</a> trên cả hai máy.</li>
+      </ul>
+    </section>
+    <section class="card connect" aria-label="Kết nối điện thoại">
+      <p class="muted">Mã phòng</p>
       <div class="code" id="codeOut">····</div>
       <div id="qr"></div>
-      <div class="status"><span class="dot" id="padDot"></span><span id="padText">Đang chờ điện thoại…</span></div>
-    </div>
-    <div class="card readout">
-      <div><span class="muted">alpha</span><b id="ra">–</b></div>
-      <div><span class="muted">beta</span><b id="rb">–</b></div>
-      <div><span class="muted">gamma</span><b id="rg">–</b></div>
-    </div>
-    <div class="card">
-      <p class="muted">Chưa có điện thoại? Kéo chuột trên khối để xoay thử.</p>
-      <p class="muted">Không kết nối được? <a href="check.html">Kiểm tra kết nối</a></p>
-      <button class="ghost" id="resetBtn">Đặt lại gốc</button>
-    </div>
-  </aside>
-</div>
+      <p class="muted">hoặc mở <b id="padUrl"></b> và nhập mã</p>
+      <div class="status" style="margin-top:.6rem"><span class="dot" id="padDot"></span><span id="padText">Đang chờ điện thoại…</span></div>
+    </section>
+  </div>
+
+  <h2>Chọn game</h2>
+  <div class="games">
+    <a class="game" href="fruit.html" data-g="fruit">
+      <div class="art" style="background:linear-gradient(135deg,#6b4527,#3e2614)">
+        <svg viewBox="0 0 120 100" aria-hidden="true">
+          <path d="M10 40 A50 50 0 0 0 110 40 Z" fill="#2f9e44"/><path d="M16 40 A44 44 0 0 0 104 40 Z" fill="#d7f5c9"/>
+          <path d="M21 40 A39 39 0 0 0 99 40 Z" fill="#ff4d5e"/>
+          <g fill="#1d1d1d"><ellipse cx="45" cy="55" rx="2.5" ry="4"/><ellipse cx="60" cy="62" rx="2.5" ry="4"/><ellipse cx="75" cy="55" rx="2.5" ry="4"/><ellipse cx="52" cy="70" rx="2.5" ry="4"/><ellipse cx="68" cy="70" rx="2.5" ry="4"/></g>
+          <path d="M8 20 L112 64" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".9"/>
+        </svg>
+      </div>
+      <div class="body">
+        <h3>Chém hoa quả</h3>
+        <p class="muted">Điện thoại là thanh kiếm. Chĩa vào màn hình, vung qua quả để chém, tránh bom.</p>
+        <div class="tags"><span>Vung điện thoại</span><span>Chuột được</span><span>1 người</span></div>
+        <span class="play">Chơi →</span>
+      </div>
+    </a>
+    <a class="game" href="pickleball.html" data-g="pickle">
+      <div class="art" style="background:linear-gradient(135deg,#2d62b0,#3f8a5c)">
+        <svg viewBox="0 0 120 100" aria-hidden="true">
+          <g transform="rotate(-30 50 55)"><rect x="44" y="62" width="12" height="32" rx="4" fill="#222"/><ellipse cx="50" cy="40" rx="26" ry="30" fill="#ffd23f"/><ellipse cx="50" cy="40" rx="20" ry="24" fill="none" stroke="#e0a800" stroke-width="2"/></g>
+          <circle cx="95" cy="26" r="11" fill="#e8ff3a"/><g fill="#9bb000"><circle cx="91" cy="22" r="2"/><circle cx="99" cy="25" r="2"/><circle cx="94" cy="31" r="2"/></g>
+        </svg>
+      </div>
+      <div class="body">
+        <h3>Pickleball</h3>
+        <p class="muted">Đánh với máy, nhìn từ sau lưng nhân vật. Điện thoại là cây vợt, vung đúng lúc để đánh.</p>
+        <div class="tags"><span>Vung điện thoại</span><span>Bàn phím được</span><span>3 mức máy</span></div>
+        <span class="play">Chơi →</span>
+      </div>
+    </a>
+    <a class="game" href="cube.html" data-g="cube">
+      <div class="art" style="background:radial-gradient(circle at 50% 40%,#2A2E6E,#0D0F26 75%)">
+        <svg viewBox="0 0 120 100" aria-hidden="true">
+          <path d="M60 12 L98 32 L60 52 L22 32 Z" fill="#ffc857"/><path d="M22 32 L60 52 L60 92 L22 72 Z" fill="#5ed6b5"/><path d="M98 32 L60 52 L60 92 L98 72 Z" fill="#ff6b8a"/>
+        </svg>
+      </div>
+      <div class="body">
+        <h3>Khối 3D</h3>
+        <p class="muted">Xoay điện thoại, khối trên màn hình xoay theo y hệt. Thử cảm biến và độ trễ.</p>
+        <div class="tags"><span>Xoay điện thoại</span><span>Chuột được</span></div>
+        <span class="play">Mở →</span>
+      </div>
+    </a>
+  </div>
+  <footer><a href="../">← Các dự án khác của hGame</a> · <a href="check.html">Kiểm tra kết nối</a></footer>
+</main>
 
 <script>
 (() => {
 "use strict";
-const $ = id => document.getElementById(id);
-
-// ---------- Kết nối với điện thoại (WebRTC, xem link.js) ----------
-let target = new THREE.Quaternion();     // tư thế đích (đã trừ gốc)
-let raw = new THREE.Quaternion();        // tư thế thô từ điện thoại
-let offset = new THREE.Quaternion();     // gốc "thẳng"
-let havePad = false, pendingReset = false;
-
-// Trang điện thoại nằm cạnh trang này; ?peer= ?relay= ?via= (chọn máy chủ / đường kết nối) được chuyển theo.
+const $ = (id) => document.getElementById(id);
+const params = new URLSearchParams(location.search);
 const padUrl = (code) => {
   const u = new URL("pad.html", location.href);
-  const params = new URLSearchParams(location.search);
   if (code) u.searchParams.set("c", code);
+  u.searchParams.set("game", "hub");
   for (const k of ["peer", "relay", "via"]) if (params.get(k)) u.searchParams.set(k, params.get(k));
   return u;
 };
 $("padUrl").textContent = padUrl().host + padUrl().pathname;
 
-TiltLink.hostScreen({
+const link = TiltLink.hostScreen({
+  game: "hub",
   onCode(code) {
     $("codeOut").textContent = code;
     $("qr").innerHTML = "";
-    new QRCode($("qr"), { text: padUrl(code).href, width: 140, height: 140, correctLevel: QRCode.CorrectLevel.M });
+    new QRCode($("qr"), { text: padUrl(code).href, width: 150, height: 150, correctLevel: QRCode.CorrectLevel.M });
   },
   onPads(n, { relay }) {
-    havePad = n > 0;
-    $("padDot").classList.toggle("live", havePad);
-    $("padText").textContent = (!havePad ? "Đang chờ điện thoại…" : n === 1 ? "Điện thoại đã kết nối" : n + " điện thoại đang kết nối")
-      + (relay ? " (qua máy chủ trung gian)" : "");
+    $("padDot").classList.toggle("live", n > 0);
+    $("padText").textContent = !n ? "Đang chờ điện thoại…"
+      : (n === 1 ? "Điện thoại đã kết nối" : n + " điện thoại đã kết nối") + (relay ? " (qua trung gian)" : "") + " – chọn game nhé";
   },
-  onMessage(d) {
-    if (d.t === "reset") { pendingReset = true; return; }
-    if (d.t !== "orient") return;
-    const num = (v) => (Number.isFinite(+v) ? +v : 0);
-    const a = num(d.a), b = num(d.b), g = num(d.g), o = num(d.o);
-    $("ra").textContent = a.toFixed(0) + "°"; $("rb").textContent = b.toFixed(0) + "°"; $("rg").textContent = g.toFixed(0) + "°";
-    deviceToQuaternion(raw, a, b, g, o);
-    if (pendingReset) { offset.copy(raw).invert(); pendingReset = false; }
-    target.copy(offset).multiply(raw);
-  },
-  onError(err) {
-    $("padText").textContent = "Không mở được phòng (" + (err.type || err.message) + "). Tải lại trang để thử lại.";
-  },
+  onMessage() {},
+  onError(err) { $("padText").textContent = "Không mở được phòng (" + (err.type || err.message) + "). Tải lại trang để thử lại."; },
 });
-$("resetBtn").onclick = () => { pendingReset = true; };
-
-// ---------- DeviceOrientation (độ) → quaternion ----------
-// Cùng công thức với DeviceOrientationControls của three.js:
-// hệ trục của khối = hệ trục điện thoại (X sang phải, Y lên đỉnh máy, Z chĩa ra khỏi màn hình).
-const DEG = Math.PI / 180;
-const zee = new THREE.Vector3(0, 0, 1);
-const euler = new THREE.Euler();
-const q0 = new THREE.Quaternion();
-const q1 = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5)); // -90° quanh X
-function deviceToQuaternion(q, alpha, beta, gamma, orient) {
-  euler.set(beta * DEG, alpha * DEG, -gamma * DEG, "YXZ");
-  q.setFromEuler(euler);
-  q.multiply(q1);
-  q.multiply(q0.setFromAxisAngle(zee, -orient * DEG));
+// Bấm game: chuyển trang qua link.goTo để điện thoại đi theo; mở tab mới (Ctrl/giữa chuột) thì để trình duyệt tự làm.
+for (const a of document.querySelectorAll(".game")) {
+  a.addEventListener("click", (e) => {
+    if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+    e.preventDefault(); link.goTo(a.dataset.g);
+  });
 }
-
-// ---------- Three.js ----------
-const canvas = $("board");
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-renderer.setPixelRatio(Math.min(2, devicePixelRatio));
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
-camera.position.set(0, 0, 7.5);
-
-scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-const key = new THREE.DirectionalLight(0xffffff, 0.9); key.position.set(3, 5, 6); scene.add(key);
-const rim = new THREE.DirectionalLight(0x8fa3ff, 0.5); rim.position.set(-4, -2, -3); scene.add(rim);
-
-// Khối hình điện thoại: mỗi mặt một màu để nhìn rõ chiều xoay
-const colors = [0xFF6B8A, 0x5ED6B5, 0xFFC857, 0x6C7BFF, 0xF2F0FF, 0x2A2E6E]; // +X -X +Y -Y +Z(màn hình) -Z(lưng)
-const mats = colors.map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.45, metalness: 0.1 }));
-const body = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.8, 0.18), mats);
-// "màn hình" tối + nốt camera để biết đâu là mặt trước / đỉnh máy
-const screenMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 2.5), new THREE.MeshStandardMaterial({ color: 0x0D0F26, roughness: 0.2 }));
-screenMesh.position.z = 0.091; body.add(screenMesh);
-const cam = new THREE.Mesh(new THREE.CircleGeometry(0.07, 24), new THREE.MeshStandardMaterial({ color: 0x5ED6B5 }));
-cam.position.set(0, 1.3, 0.092); body.add(cam);
-const axes = new THREE.AxesHelper(2.2); body.add(axes);
-scene.add(body);
-
-// Lưới sàn để có cảm giác không gian
-const grid = new THREE.GridHelper(12, 24, 0x2A2E6E, 0x2A2E6E);
-grid.position.y = -2.2; scene.add(grid);
-
-// Kéo chuột để xoay thử khi chưa có điện thoại
-let drag = null;
-canvas.addEventListener("pointerdown", e => { drag = { x: e.clientX, y: e.clientY }; });
-addEventListener("pointerup", () => { drag = null; });
-addEventListener("pointermove", e => {
-  if (!drag || havePad) return;
-  const dx = (e.clientX - drag.x) * 0.01, dy = (e.clientY - drag.y) * 0.01; drag = { x: e.clientX, y: e.clientY };
-  const dq = new THREE.Quaternion().setFromEuler(new THREE.Euler(dy, dx, 0, "XYZ"));
-  target.premultiply(dq);
-});
-
-function resize() {
-  const w = canvas.clientWidth, h = canvas.clientHeight;
-  if (canvas.width !== w * renderer.getPixelRatio() || canvas.height !== h * renderer.getPixelRatio()) {
-    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
-  }
-}
-function loop() {
-  resize();
-  body.quaternion.slerp(target, 0.35);   // làm mượt nhẹ, vẫn bám sát
-  renderer.render(scene, camera);
-  requestAnimationFrame(loop);
-}
-loop();
-if (new URLSearchParams(location.search).has("debug")) window.__tilt = { target, body };
 })();
 </script>
 </body>

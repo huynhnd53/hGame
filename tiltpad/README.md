@@ -1,7 +1,25 @@
-# Tilt Pad – xoay điện thoại, khối 3D trên máy tính xoay theo
+# Tilt Pad – điện thoại thành tay cầm
 
-Máy tính mở trang chính (`index.html`): hiện một khối 3D (hình điện thoại, mỗi mặt một màu) kèm mã phòng + QR.
-Điện thoại mở `pad.html`, nhập mã (hoặc quét QR). Từ đó, cầm điện thoại xoay thế nào, khối trên máy tính xoay y hệt.
+Trang chính (`index.html`) giới thiệu cách chơi, hiện mã phòng + QR và cho chọn game. Điện thoại quét QR mở `pad.html`;
+từ đó chọn game trên máy tính hoặc ngay trên điện thoại. Đổi game không phải quét lại mã.
+
+| Trang | Game |
+| --- | --- |
+| `index.html` | Giới thiệu, kết nối, chọn game |
+| `fruit.html` | Chém hoa quả: điện thoại là thanh kiếm |
+| `pickleball.html` | Pickleball góc nhìn thứ ba: điện thoại là vợt |
+| `cube.html` | Khối 3D (hình điện thoại) xoay theo điện thoại |
+| `check.html` | Kiểm tra kết nối |
+
+### Đổi game giữ nguyên kết nối
+
+- Máy tính chuyển trang bằng `link.goTo(game)` (`public/link.js`): báo điện thoại `{t:"switch", game}`, rồi mở trang
+  mới với `?room=<MÃ>`. Trang mới mở lại phòng đúng mã đó (mã cũng được nhớ trong `sessionStorage` của tab); nếu máy chủ
+  PeerJS chưa nhả mã thì chờ 0,7 giây rồi thử lại.
+- Điện thoại thấy phòng đóng thì tự nối lại mỗi 1–1,5 giây trong 30 giây. Khi vào, máy tính báo `{t:"game", game}` để
+  điện thoại đổi chữ (Thanh kiếm, Vợt pickleball…). Tải lại trang game cũng vậy.
+- Ở trang chọn game, điện thoại hiện danh sách game; bấm là gửi `{t:"pick", game}`, máy tính chuyển theo. Trong game có
+  nút "Chọn game khác" (gửi `{t:"pick", game:"hub"}`).
 
 ## Chạy
 
@@ -61,7 +79,7 @@ trước đường bóng để tìm điểm đỡ nên dự đoán khớp tuyệ
 ## Cách hoạt động
 
 ```
-Điện thoại (pad.html)          Máy chủ PeerJS (0.peerjs.com)       Máy tính (index.html, three.js)
+Điện thoại (pad.html)          Máy chủ PeerJS (0.peerjs.com)       Máy tính (cube.html, three.js)
                                chỉ dùng lúc ghép cặp:
 peer.connect("hgame-tiltpad-ABCD") ──▶ tìm máy có ID đó ◀── new Peer("hgame-tiltpad-ABCD")
 
@@ -108,6 +126,9 @@ hệ trục điện thoại: X sang phải, Y lên đỉnh máy, Z chĩa ra kh�
 | pad → máy tính   | `{t:"reset"}`               | lấy tư thế hiện tại làm gốc              |
 | máy tính → pad   | `{t:"closed"}`              | màn hình máy tính đã đóng                 |
 | máy tính → pad   | `{t:"buzz", ms}`            | rung điện thoại (chém trúng, đánh trúng bóng, được điểm) |
+| máy tính → pad   | `{t:"game", game}`          | đang mở game nào (`hub`, `fruit`, `pickle`, `cube`) |
+| máy tính → pad   | `{t:"switch", game}`        | sắp chuyển sang game khác, chờ rồi tự nối lại |
+| pad → máy tính   | `{t:"pick", game}`          | chọn game từ điện thoại |
 
 Qua đường trung gian, các tin trên được bọc trong `{p: mã điện thoại, k: "msg", m: tin}`; ngoài ra có `knock`/`here`,
 `hello`/`welcome`, `ping` và `bye` (điện thoại đóng trang; máy chủ MQTT cũng tự gửi khi điện thoại rớt mạng).
@@ -134,5 +155,5 @@ Nút "Sao chép kết quả" chép toàn bộ ra chữ để gửi đi. Trang đ
   - `?peer=<host>:9000`: máy chủ PeerJS riêng (`npx peerjs --port 9000`).
   - `?relay=wss://<host>/mqtt`: máy chủ MQTT riêng (ví dụ Mosquitto có bật WebSocket).
   - `?via=p2p` hoặc `?via=relay`: chỉ dùng một đường, để biết đường nào hỏng.
-- Muốn khối khác (lập phương, mô hình GLTF…): chỉ cần thay `body` trong `public/index.html`, phần quaternion giữ nguyên.
+- Muốn khối khác (lập phương, mô hình GLTF…): chỉ cần thay `body` trong `public/cube.html`, phần quaternion giữ nguyên.
 - `render.yaml` vẫn dùng được nếu muốn chạy `npm start` trên Render, nhưng không cần nữa vì app chạy được trên GitHub Pages.

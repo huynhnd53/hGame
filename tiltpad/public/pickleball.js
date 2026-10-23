@@ -545,6 +545,7 @@ const padUrl = (code) => {
 };
 $("padUrl").textContent = padUrl().host + padUrl().pathname;
 const link = TiltLink.hostScreen({
+  game: "pickle",
   onCode(code) {
     $("codeOut").textContent = code; $("qr").innerHTML = "";
     new QRCode($("qr"), { text: padUrl(code).href, width: 132, height: 132, correctLevel: QRCode.CorrectLevel.M });
@@ -645,6 +646,7 @@ function startMatch(asDemo) {
 }
 $("playBtn").onclick = () => startMatch(false);
 $("demoBtn").onclick = () => startMatch(true);
+$("hubBtn").onclick = () => link.goTo("hub");
 $("againBtn").onclick = () => startMatch(demo);
 $("menuBtn").onclick = () => { game.state = "menu"; show("menu"); hint(""); banner(""); };
 for (const b of document.querySelectorAll("#level button")) {

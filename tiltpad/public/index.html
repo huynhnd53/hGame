@@ -131,7 +131,8 @@
       </div>
     </a>
   </div>
-  <footer><a href="../">← Các dự án khác của hGame</a> · <a href="check.html">Kiểm tra kết nối</a></footer>
+  <footer><a href="../">← Các dự án khác của hGame</a> · <a href="check.html">Kiểm tra kết nối</a> ·
+    <a href="motion.html" data-g="motion" class="gofoot">Kiểm tra cử động vợt</a></footer>
 </main>
 
 <script>
@@ -164,7 +165,7 @@ const link = TiltLink.hostScreen({
   onError(err) { $("padText").textContent = "Không mở được phòng (" + (err.type || err.message) + "). Tải lại trang để thử lại."; },
 });
 // Bấm game: chuyển trang qua link.goTo để điện thoại đi theo; mở tab mới (Ctrl/giữa chuột) thì để trình duyệt tự làm.
-for (const a of document.querySelectorAll(".game")) {
+for (const a of document.querySelectorAll(".game, .gofoot")) {
   a.addEventListener("click", (e) => {
     if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
     e.preventDefault(); link.goTo(a.dataset.g);

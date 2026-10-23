@@ -172,48 +172,37 @@ cue.renderOrder = cueDot.renderOrder = 10;
 cue.visible = cueDot.visible = false;
 scene.add(cue, cueDot);
 
-// Vợt của mình, gắn vào camera ở chỗ tay phải. Có điện thoại thì vợt xoay đúng theo điện thoại (trục đỉnh máy = cán
-// vợt hướng lên mặt vợt, mặt màn hình = mặt vợt); không có thì chạy hoạt cảnh theo kiểu đánh.
-const fpHand = new T.Group();
-fpHand.position.set(0.3, -0.36, -0.5);
-camera.add(fpHand);
-const fpPaddle = new T.Group();
-fpHand.add(fpPaddle);
-{
-  const grip = new T.Mesh(new T.BoxGeometry(0.034, 0.13, 0.03), mat(0x222222)); grip.position.y = 0.065; fpPaddle.add(grip);
-  const faceG = new T.Group(); faceG.position.y = 0.25; faceG.scale.set(1, 1.3, 1); fpPaddle.add(faceG);
-  const face = new T.Mesh(new T.CylinderGeometry(0.095, 0.095, 0.014, 28), mat(0xffd23f)); face.rotation.x = Math.PI / 2; faceG.add(face);
-  const rim = new T.Mesh(new T.TorusGeometry(0.095, 0.007, 6, 28), mat(0x1f2a44)); faceG.add(rim);
-  const fist = new T.Mesh(new T.SphereGeometry(0.045, 12, 10), mat(0xf1c7a1)); fist.position.y = 0.04; fist.scale.set(1, 1.3, 1.1); fpPaddle.add(fist);
-}
-// Tư thế gốc: cán vợt chếch lên và ra trước. Lúc căn giữa điện thoại, vợt nằm ở tư thế này.
-const FP_BASE = new T.Quaternion().setFromEuler(new T.Euler(-0.75, 0.25, -0.35));
-// Hoạt cảnh khi không có điện thoại: góc quanh trục X (âm là đầu vợt chúc lên/ra trước) và quanh Z (vung ngang).
+// Vợt của mình (paddle.js, dùng chung với trang kiểm tra motion.html): có điện thoại thì vợt lấy đúng tư thế điện
+// thoại trong không gian; không có thì chạy hoạt cảnh theo kiểu đánh. Vợt đặt trong sân theo người, không gắn vào
+// camera, nên quay đầu nhìn bóng không kéo vợt theo.
+const PM = window.PaddleMotion;
+const fpPaddle = PM.buildPaddle();
+scene.add(fpPaddle);
+// Hoạt cảnh: [chúc/ngóc, quét ngang] lúc lấy đà và lúc kết thúc. Chúc/ngóc âm là đầu vợt ra trước, quá π/2 là đầu vợt
+// chúc xuống đất phía sau; quét ngang dương là sang trái.
+const READY = [-0.5, -0.15];
 const FP_SWINGS = {
-  vut: [[1.1, 0], [-1.3, 0.2]], smash: [[-1.9, 0], [0.9, 0]], dink: [[0.2, 0], [-0.25, 0]],
-  lob: [[1.2, 0], [-1.6, 0]], drive: [[0, 1.1], [-0.2, -1.1]], fast: [[0, 1.3], [-0.2, -1.3]],
-  serve: [[1.1, 0], [-1.0, 0]], netfault: [[-1.9, 0], [0.9, 0]],
+  vut: [[2.4, -0.3], [-1.0, 0.3]], smash: [[0.5, -0.1], [-2.3, 0.1]], dink: [[-0.9, 0], [-1.35, 0]],
+  lob: [[2.5, 0], [-0.3, 0]], drive: [[-1.45, -1.2], [-1.45, 1.0]], fast: [[-1.45, -1.4], [-1.45, 1.2]],
+  serve: [[2.4, -0.3], [-0.9, 0.2]], netfault: [[0.5, -0.1], [-2.3, 0.1]],
 };
 let fpAnim = null;               // { kind, t0 } (giờ thật, ms)
 function fpSwing(kind) { fpAnim = { kind: FP_SWINGS[kind] ? kind : "vut", t0: performance.now() }; }
-const fpEuler = new T.Euler(), fpQ = new T.Quaternion();
+const fpQ = new T.Quaternion(), eyeV = new T.Vector3();
 function updateFpPaddle() {
-  const now = performance.now();
-  if (phoneCount && now - phoneAt < 400) {
-    fpPaddle.quaternion.copy(FP_BASE).multiply(rel);         // theo đúng tay người chơi
-    return;
-  }
-  let ax = 0.15, az = 0;
+  const me = players[1];
+  eyeV.set(me.rx, EYE_Y, me.rz);
+  if (phoneCount && motion.live() && motion.centered) { PM.place(fpPaddle, motion.q, eyeV); return; }
+  let [ax, ay] = READY;
   if (fpAnim) {
-    const [[x0, z0], [x1, z1]] = FP_SWINGS[fpAnim.kind];
-    const u = (now - fpAnim.t0) / 260;
-    if (u < 0.25) { const e = u / 0.25; ax = lerp(0.15, x0, e); az = lerp(0, z0, e); }
-    else if (u < 0.7) { const e = easeOut((u - 0.25) / 0.45); ax = lerp(x0, x1, e); az = lerp(z0, z1, e); }
-    else if (u < 1.6) { const e = (u - 0.7) / 0.9; ax = lerp(x1, 0.15, e); az = lerp(z1, 0, e); }
+    const [[x0, y0], [x1, y1]] = FP_SWINGS[fpAnim.kind];
+    const u = (performance.now() - fpAnim.t0) / 280;
+    if (u < 0.3) { const e = u / 0.3; ax = lerp(READY[0], x0, e); ay = lerp(READY[1], y0, e); }
+    else if (u < 0.75) { const e = easeOut((u - 0.3) / 0.45); ax = lerp(x0, x1, e); ay = lerp(y0, y1, e); }
+    else if (u < 1.7) { const e = (u - 0.75) / 0.95; ax = lerp(x1, READY[0], e); ay = lerp(y1, READY[1], e); }
     else fpAnim = null;
   }
-  fpEuler.set(ax, 0, az);
-  fpPaddle.quaternion.copy(FP_BASE).multiply(fpQ.setFromEuler(fpEuler));
+  PM.place(fpPaddle, PM.poseFrom(fpQ, ax, ay), eyeV);
 }
 
 // ---------- Âm thanh tự tổng hợp ----------
@@ -542,7 +531,8 @@ function requestSwing(kind, info = {}) {
     return;
   }
   if (game.state !== "rally") return;
-  if (swing && game.t - swing.at < 0.15) return;                  // cùng một cú vung báo hai lần
+  // Phím bấm hai lần liền: bỏ lần sau. Điện thoại: đoạn vung mới (sau lấy đà) luôn thay đoạn trước.
+  if (!info.sw && swing && !swing.sw && game.t - swing.at < 0.15) return;
   // Cú vung mới thay cú cũ (không chặn): cử động lỡ tay ngay trước không nuốt mất cú thật.
   swing = { at: Math.min(game.t, info.at ?? game.t), kind, aim: info.aim ?? aimFromMouse(), sw: info.sw || null };
   const pl = p.plan && !p.plan.letGo ? p.plan : null;
@@ -609,92 +599,16 @@ stage.addEventListener("pointerdown", (e) => {
 });
 stage.addEventListener("contextmenu", (e) => { if (!e.target.closest(".panel")) e.preventDefault(); });
 
-// ---------- Điện thoại: tính tốc độ xoay để nhận cú vung ----------
-const DEG = Math.PI / 180;
-const zee = new T.Vector3(0, 0, 1);
-const euler = new T.Euler();
-const q0 = new T.Quaternion();
-const q1 = new T.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5));
-function deviceToQuaternion(q, alpha, beta, gamma, orient) {
-  euler.set(beta * DEG, alpha * DEG, -gamma * DEG, "YXZ");
-  q.setFromEuler(euler); q.multiply(q1); q.multiply(q0.setFromAxisAngle(zee, -orient * DEG));
-}
-const raw = new T.Quaternion(), offset = new T.Quaternion(), rel = new T.Quaternion(), prevRel = new T.Quaternion();
-let pendingCenter = true, prevTs = 0, phoneCount = 0, relayCount = 0;
-const SWING_START = 200, SWING_END = 120;     // độ/giây (thấp hơn bản thường để bắt được cú dink)
-const history = [];                           // { ts, elev, yaw } – hướng đầu vợt
-let phoneSwing = null;                        // { ts, peak, elev0, yaw0, elev, yaw, elevMax, elevMin }
-let lastPhoneSwingEnd = 0;
-// Độ trễ mạng: (giờ nhận − giờ trên điện thoại) nhỏ nhất gần đây là mức nền; tin đến muộn hơn mức đó bao nhiêu thì
-// cú vung thật ra đã bắt đầu sớm hơn bấy nhiêu, tính lùi lại để chấm nhịp công bằng.
-let lagFloor = Infinity;
-
-// Đầu vợt (trục đỉnh máy, đã căn giữa): góc ngóc lên (elev, độ) và góc ngang (yaw, độ).
-function tipAngles(q) {
-  const top = new T.Vector3(0, 1, 0).applyQuaternion(q);
-  return { elev: Math.asin(clamp(top.z, -1, 1)) / DEG, yaw: Math.atan2(top.x, top.y) / DEG };
-}
-let lastGestureInfo = "", phoneAt = -1e9, swingFromKeys = false;
-
-function onOrient(d) {
-  const num = (v) => (Number.isFinite(+v) ? +v : 0);
-  deviceToQuaternion(raw, num(d.a), num(d.b), num(d.g), num(d.o));
-  if (pendingCenter) { offset.copy(raw).invert(); pendingCenter = false; }
-  rel.copy(offset).multiply(raw);
-  phoneAt = performance.now();
-  const ts = Number.isFinite(+d.ts) ? +d.ts : performance.now();
-  const lag = performance.now() - ts;
-  lagFloor = Math.min(lagFloor + 0.05, lag);                  // nhích dần lên để theo kịp khi đồng hồ hai máy trôi
-  const dt = (ts - prevTs) / 1000;
-  const angle = 2 * Math.acos(Math.min(1, Math.abs(prevRel.dot(rel)))) / DEG;
-  prevRel.copy(rel);
-  const tip = tipAngles(rel);
-  history.push({ ts, ...tip }); while (history.length && ts - history[0].ts > 600) history.shift();
-  if (prevTs === 0 || dt <= 0 || dt > 0.25) { prevTs = ts; return; }
-  prevTs = ts;
-  const speed = angle / Math.max(dt, 0.008);
-  if (!phoneSwing) {
-    if (speed > SWING_START && ts - lastPhoneSwingEnd > 200) {
-      // Tư thế ngay trước cú vung (~0,12 s trước): biết vợt đang giơ cao hay hạ thấp.
-      const before = history.find((h) => ts - h.ts <= 120) || history[0];
-      phoneSwing = { ts, peak: speed, elev0: before.elev, yaw0: before.yaw, elev: tip.elev, yaw: tip.yaw, elevMax: Math.max(before.elev, tip.elev), elevMin: Math.min(before.elev, tip.elev), hit: false };
-      const late = clamp((lag - lagFloor) / 1000, 0, 0.25);
-      requestSwing("phone", { aim: 0, sw: phoneSwing, at: game.t - late });
-    }
-  } else {
-    const sw = phoneSwing;
-    sw.peak = Math.max(sw.peak, speed);
-    sw.elev = tip.elev; sw.yaw = tip.yaw;
-    sw.elevMax = Math.max(sw.elevMax, tip.elev); sw.elevMin = Math.min(sw.elevMin, tip.elev);
-    if (speed < SWING_END || ts - sw.ts > 450) {
-      // Hết cú vung: không trúng bóng thì vẫn báo động tác nhận được, để người chơi tập.
-      if (!sw.hit) showGesture(SHOTS[classifySwing(sw)].label, gestureInfo(sw), "");
-      phoneSwing = null; lastPhoneSwingEnd = ts;
-    }
-  }
-}
-
-/**
- * Nhận động tác từ cú vung điện thoại (cầm như cán vợt, đầu máy chĩa vào màn hình lúc căn giữa):
- * - vung chậm, nhẹ: dink;
- * - đầu vợt đang giơ cao rồi chúc mạnh xuống: smash;
- * - đầu vợt đi lên nhiều hơn đi ngang: vụt từ dưới lên (lên dốc mà chậm thì là lốp);
- * - còn lại (vung ngang): đánh thẳng, nhanh thì đánh mạnh.
- */
-function classifySwing(sw) {
-  if (!sw) return "vut";
-  const dElev = sw.elev - sw.elev0;
-  let dYaw = Math.abs(sw.yaw - sw.yaw0); if (dYaw > 180) dYaw = 360 - dYaw;
-  if (sw.peak < 420) return "dink";
-  if (dElev < -30 && sw.elevMax > 12 && -dElev > dYaw * 0.6) return "smash";
-  if (dElev > 25 && dElev > dYaw * 0.7) return dElev > 70 && sw.peak < 750 ? "lob" : "vut";
-  return sw.peak > 950 ? "fast" : "drive";
-}
-function gestureInfo(sw) {
-  if (!sw) return "";
-  const dElev = sw.elev - sw.elev0;
-  return Math.round(sw.peak) + "°/s · " + (dElev >= 0 ? "↑" : "↓") + Math.abs(Math.round(dElev)) + "°";
-}
+// ---------- Điện thoại làm cán vợt (paddle.js): tư thế vợt và nhận động tác ----------
+let phoneCount = 0, relayCount = 0, lastGestureInfo = "", swingFromKeys = false;
+const motion = PM.create({
+  // Thời điểm vung tính lùi theo độ trễ mạng (paddle.js đo bằng giờ trên điện thoại).
+  onSwing(sw, late) { requestSwing("phone", { aim: 0, sw, at: game.t - late }); },
+  // Cú đánh (không tính lấy đà) mà không trúng bóng: vẫn báo động tác nhận được, để người chơi tập.
+  onStroke(sw, group) { if (!group.some((x) => x.hit)) showGesture(SHOTS[PM.classify(sw).kind].label, PM.info(sw), ""); },
+});
+const classifySwing = (sw) => PM.classify(sw).kind;
+const gestureInfo = PM.info;
 let gestureTimer = 0;
 function showGesture(name, info, cls) {
   $("gName").textContent = name; $("gInfo").textContent = info || "";
@@ -717,10 +631,10 @@ const link = TiltLink.hostScreen({
     new QRCode($("qr"), { text: padUrl(code).href, width: 132, height: 132, correctLevel: QRCode.CorrectLevel.M });
     setPadText();
   },
-  onPads(n, { relay }) { phoneCount = n; relayCount = relay; if (n > 0) pendingCenter = true; setPadText(); },
+  onPads(n, { relay }) { phoneCount = n; relayCount = relay; if (n > 0) motion.center(); setPadText(); },
   onMessage(d) {
-    if (d.t === "reset") { pendingCenter = true; popupCenter("Đã căn giữa"); return; }
-    if (d.t === "orient") onOrient(d);
+    if (d.t === "reset") { motion.center(); popupCenter("Đã căn giữa"); return; }
+    if (d.t === "orient") motion.onOrient(d);
   },
   onError(err) { $("padText").textContent = "Không mở được phòng (" + (err.type || err.message) + ")"; },
 });
@@ -813,6 +727,7 @@ function startMatch(asDemo) {
 $("playBtn").onclick = () => startMatch(false);
 $("demoBtn").onclick = () => startMatch(true);
 $("hubBtn").onclick = () => link.goTo("hub");
+$("motionBtn").onclick = () => link.goTo("motion");
 $("againBtn").onclick = () => startMatch(demo);
 $("menuBtn").onclick = () => { game.state = "menu"; show("menu"); hint(""); banner(""); };
 for (const b of document.querySelectorAll("#level button")) {
@@ -1016,6 +931,6 @@ resize();
 for (const s of [1, -1]) { const p = players[s]; p.x = p.rx = 0; p.z = p.rz = s * (HALF_L - 0.5); }
 savePrev();
 requestAnimationFrame(frame);
-if (params.has("debug")) window.__pb = { game, ball, players, requestSwing, startMatch, predict, classifySwing, onOrient, IMPACT_LEAD };
+if (params.has("debug")) window.__pb = { game, ball, players, requestSwing, startMatch, predict, classifySwing, onOrient: (d) => motion.onOrient(d), motion, IMPACT_LEAD };
 if (params.has("demo")) startMatch(true);
 })();

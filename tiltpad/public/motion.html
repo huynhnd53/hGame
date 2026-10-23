@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kiểm tra cử động vợt – Tilt Pad</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.4/dist/mqtt.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="link.js"></script>
+<script src="paddle.js"></script>
+<style>
+  [hidden] { display: none !important; }
+  body { padding: 12px; }
+  main { max-width: 1280px; margin: 0 auto; display: grid; grid-template-columns: 1.35fr 1fr; gap: 12px; }
+  header { grid-column: 1 / -1; display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+  header h1 { font-size: 1.6rem; margin-right: auto; }
+  header .ghost { margin-top: 0; }
+  .seg { display: inline-flex; border: 2px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .seg button { padding: .35rem .8rem; font-weight: 700; }
+  .seg button.on { background: var(--ball); color: #1C1F4A; }
+  #view { position: relative; border-radius: 20px; overflow: hidden; background: #0d1426; min-height: 420px; }
+  #gl { width: 100%; height: 100%; display: block; position: absolute; inset: 0; }
+  .ov { position: absolute; left: 12px; top: 10px; color: #fff; font-weight: 700; text-shadow: 0 2px 6px rgba(0,0,0,.6); pointer-events: none; }
+  #swingFlag { position: absolute; right: 12px; top: 10px; background: #ff6b8a; color: #fff; padding: .2rem .7rem; border-radius: 999px; font-weight: 800; visibility: hidden; }
+  #swingFlag.on { visibility: visible; }
+  #connect { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(13,15,38,.82); color: #fff; padding: 16px; text-align: center; }
+  #connect .code { margin: .2rem 0; }
+  #connect #qr { display: inline-flex; margin: .5rem auto; }
+  #connect p { max-width: 460px; margin: .3rem auto; color: #d7daf5; }
+  aside { display: flex; flex-direction: column; gap: 12px; }
+  .card h2 { margin: 0 0 .5rem; font-size: 1.05rem; }
+  .meters { display: grid; grid-template-columns: auto 1fr auto; gap: .45rem .6rem; align-items: center; font-size: .95rem; }
+  .bar { position: relative; height: 14px; border-radius: 999px; background: var(--bg); overflow: hidden; }
+  .bar i { position: absolute; top: 0; bottom: 0; background: var(--coin); border-radius: 999px; }
+  .bar .mid { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: var(--line); }
+  .bar .tick { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--hot); opacity: .7; }
+  .meters b { font-variant-numeric: tabular-nums; min-width: 4.5rem; text-align: right; }
+  #chart { width: 100%; height: 150px; display: block; background: var(--bg); border-radius: 12px; }
+  .legend { display: flex; gap: .8rem; font-size: .8rem; color: var(--muted); margin-top: .3rem; flex-wrap: wrap; }
+  .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; background: var(--c); }
+  #last b#lastName { font-size: 1.9rem; display: block; line-height: 1.1; }
+  #last .why { color: var(--muted); margin-top: .2rem; }
+  #last .nums { display: grid; grid-template-columns: repeat(4, 1fr); gap: .3rem; margin-top: .5rem; font-size: .85rem; }
+  #last .nums div { background: var(--bg); border-radius: 10px; padding: .3rem .4rem; text-align: center; }
+  #last .nums b { display: block; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+  .targets { display: flex; gap: .4rem; flex-wrap: wrap; }
+  .targets button { border: 2px solid var(--line); border-radius: 12px; padding: .35rem .7rem; font-weight: 700; }
+  .targets button.on { background: var(--ball); color: #1C1F4A; border-color: var(--ball); }
+  .targets button small { display: block; font-weight: 600; color: var(--muted); font-size: .75rem; }
+  #verdict { margin-top: .5rem; font-weight: 800; font-size: 1.1rem; min-height: 1.5em; }
+  #verdict.ok { color: #2fb380; } #verdict.bad { color: #e2463c; }
+  .howto { font-size: .9rem; color: var(--muted); margin: .4rem 0 0; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } #view { min-height: 360px; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Kiểm tra cử động vợt</h1>
+    <span class="status"><span class="dot" id="padDot"></span><span id="padText">Đang mở phòng…</span></span>
+    <div class="seg" role="group" aria-label="Góc nhìn">
+      <button id="vEye" class="on">Nhìn từ mắt</button><button id="vSide">Nhìn từ bên</button><button id="vTop">Nhìn từ trên</button>
+    </div>
+    <button class="ghost" id="centerBtn">Căn giữa</button>
+    <button class="ghost" id="gameBtn">Vào game →</button>
+  </header>
+
+  <section id="view">
+    <canvas id="gl" aria-label="Cây vợt theo tay"></canvas>
+    <div class="ov" id="ovText">Vợt xoay theo đúng tay. Chấm xanh là mặt trước (phía màn hình điện thoại).</div>
+    <div id="swingFlag">ĐANG VUNG</div>
+    <div id="connect">
+      <div>
+        <h2 style="margin:0 0 .3rem">Quét mã bằng điện thoại</h2>
+        <div class="code" id="codeOut">····</div>
+        <div id="qr"></div>
+        <p>Hoặc mở <b id="padUrl"></b> và nhập mã. Cầm điện thoại như cán vợt, chĩa đầu máy vào màn hình này rồi bấm
+          <b>CĂN GIỮA</b>.</p>
+      </div>
+    </div>
+  </section>
+
+  <aside>
+    <div class="card">
+      <h2>Đang đo</h2>
+      <div class="meters">
+        <span>Đầu vợt</span><div class="bar"><span class="mid"></span><i id="elevBar"></i></div><b id="elevVal">0°</b>
+        <span>Ngang</span><div class="bar"><span class="mid"></span><i id="yawBar"></i></div><b id="yawVal">0°</b>
+        <span>Tốc độ</span><div class="bar" id="speedBarBox"><i id="speedBar" style="left:0"></i></div><b id="speedVal">0°/s</b>
+      </div>
+      <p class="howto">Đầu vợt: ngóc lên (+) / chúc xuống (−) so với mặt đất. Ngang: lệch phải (+) / trái (−) so với hướng
+        màn hình. Vạch đỏ trên thanh tốc độ: bắt đầu vung, ngưỡng dink, ngưỡng đánh mạnh.</p>
+    </div>
+    <div class="card">
+      <h2>Độ cao đầu vợt 3 giây gần nhất</h2>
+      <canvas id="chart"></canvas>
+      <div class="legend"><span style="--c:#2f6fff">đầu vợt (độ)</span><span style="--c:rgba(255,107,138,.35)">cú đánh</span><span style="--c:rgba(107,111,156,.35)">lấy đà / đưa về</span><span style="--c:#ffc857">tốc độ</span></div>
+    </div>
+    <div class="card" id="last">
+      <h2>Cú vung vừa rồi</h2>
+      <b id="lastName">–</b>
+      <div class="why" id="lastWhy">Vung thử một cái.</div>
+      <div class="nums">
+        <div>nhanh nhất<b id="nPeak">–</b></div><div>lên/xuống<b id="nRise">–</b></div>
+        <div>quét ngang<b id="nSweep">–</b></div><div>giơ cao nhất<b id="nHigh">–</b></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Tập từng động tác</h2>
+      <div class="targets" id="targets"></div>
+      <div id="verdict"></div>
+      <p class="howto" id="targetHow">Chọn một động tác rồi làm thử; trang sẽ báo máy nhận đúng hay sai.</p>
+    </div>
+  </aside>
+</main>
+
+<script>
+(() => {
+"use strict";
+const $ = (id) => document.getElementById(id);
+const T = THREE, PM = window.PaddleMotion;
+const params = new URLSearchParams(location.search);
+
+// ---------- Cảnh: người chơi đứng ở gốc, mắt cao 1,55 m, nhìn về -Z (màn hình máy tính) ----------
+const EYE = new T.Vector3(0, 1.55, 0);
+const renderer = new T.WebGLRenderer({ canvas: $("gl"), antialias: true });
+renderer.setPixelRatio(Math.min(1.5, devicePixelRatio || 1));
+const scene = new T.Scene();
+scene.background = new T.Color(0x0d1426);
+scene.add(new T.HemisphereLight(0xffffff, 0x334466, 0.9));
+const sun = new T.DirectionalLight(0xffffff, 0.7); sun.position.set(2, 4, 3); scene.add(sun);
+const grid = new T.GridHelper(8, 16, 0x3b4a7a, 0x22305a); scene.add(grid);
+// "Màn hình máy tính" ở phía trước, để biết hướng nào là phía lưới.
+const screenTex = (() => {
+  const c = document.createElement("canvas"); c.width = 512; c.height = 160;
+  const g = c.getContext("2d"); g.fillStyle = "#1c2a55"; g.fillRect(0, 0, 512, 160);
+  g.strokeStyle = "#ffc857"; g.lineWidth = 8; g.strokeRect(4, 4, 504, 152);
+  g.fillStyle = "#fff"; g.font = "bold 46px system-ui, sans-serif"; g.textAlign = "center"; g.fillText("MÀN HÌNH MÁY TÍNH", 256, 96);
+  return new T.CanvasTexture(c);
+})();
+const screenMesh = new T.Mesh(new T.PlaneGeometry(2.4, 0.75), new T.MeshBasicMaterial({ map: screenTex }));
+screenMesh.position.set(0, 1.4, -3.2); scene.add(screenMesh);
+// Thân người (chỉ thấy khi nhìn từ bên/trên) để dễ hình dung vợt đang ở đâu so với người.
+const body = new T.Group();
+const skin = new T.MeshLambertMaterial({ color: 0xf1c7a1 }), shirt = new T.MeshLambertMaterial({ color: 0x2f6fff });
+const torso = new T.Mesh(new T.BoxGeometry(0.42, 0.62, 0.24), shirt); torso.position.y = 1.23; body.add(torso);
+const head = new T.Mesh(new T.SphereGeometry(0.14, 16, 12), skin); head.position.copy(EYE).setY(1.62); body.add(head);
+const nose = new T.Mesh(new T.ConeGeometry(0.03, 0.08, 8), skin); nose.rotation.x = -Math.PI / 2; nose.position.set(0, 1.6, -0.15); body.add(nose);
+for (const s of [-1, 1]) { const leg = new T.Mesh(new T.BoxGeometry(0.15, 0.9, 0.16), new T.MeshLambertMaterial({ color: 0x1d2b55 })); leg.position.set(s * 0.12, 0.45, 0); body.add(leg); }
+scene.add(body);
+// Cây vợt: đúng hàm đặt vợt của game (paddle.js).
+const paddle = PM.buildPaddle();
+scene.add(paddle);
+// Vệt đầu vợt 1,2 giây gần nhất, màu theo tốc độ.
+const TRAIL = 90;
+const trailGeo = new T.BufferGeometry();
+trailGeo.setAttribute("position", new T.BufferAttribute(new Float32Array(TRAIL * 3), 3));
+trailGeo.setAttribute("color", new T.BufferAttribute(new Float32Array(TRAIL * 3), 3));
+const trailLine = new T.Line(trailGeo, new T.LineBasicMaterial({ vertexColors: true }));
+trailLine.frustumCulled = false; scene.add(trailLine);
+const trail = [];
+
+const camera = new T.PerspectiveCamera(60, 1, 0.03, 50);
+let view = "eye";
+function placeCamera() {
+  if (view === "eye") { camera.position.copy(EYE); camera.lookAt(0, 1.2, -2); body.visible = false; }
+  else if (view === "side") { camera.position.set(2.4, 1.5, -0.4); camera.lookAt(0.2, 1.2, -0.35); body.visible = true; }
+  else { camera.position.set(0.2, 4.2, -0.3); camera.lookAt(0.2, 1, -0.35); body.visible = true; }
+}
+for (const [id, v] of [["vEye", "eye"], ["vSide", "side"], ["vTop", "top"]]) {
+  $(id).onclick = () => { view = v; for (const b of ["vEye", "vSide", "vTop"]) $(b).classList.toggle("on", b === id); placeCamera(); };
+}
+function resize() {
+  const r = $("view").getBoundingClientRect();
+  renderer.setSize(r.width, r.height, false); camera.aspect = r.width / r.height; camera.updateProjectionMatrix();
+}
+addEventListener("resize", resize);
+
+// ---------- Theo dõi điện thoại ----------
+const swings = [];     // { ts0, ts1 } để tô vùng đang vung trên biểu đồ
+const samples = [];    // { ts, elev, speed }
+const motion = PM.create({
+  onSwing(sw) { swings.push({ ts0: sw.ts, ts1: null, sw }); },
+  onSwingEnd(sw) { const s = swings[swings.length - 1]; if (s) s.ts1 = sw.endTs; },
+  onStroke(sw) { showSwing(sw); },
+  onSample(m) {
+    const ts = m.history.length ? m.history[m.history.length - 1].ts : performance.now();
+    samples.push({ ts, elev: m.tip.elev, speed: m.speed });
+    while (samples.length && ts - samples[0].ts > 3000) samples.shift();
+    if (m.swing && swings.length) swings[swings.length - 1].ts1 = ts;
+  },
+});
+
+let target = null;
+const tally = {};
+const KINDS = ["vut", "smash", "dink", "lob", "drive"];
+const HOW = {
+  vut: "Hạ đầu vợt xuống thấp, rồi vụt mạnh lên phía trước.",
+  smash: "Giơ vợt lên cao, rồi đập mạnh xuống phía trước.",
+  dink: "Đẩy vợt nhẹ và chậm ra trước, như đẩy bóng qua lưới.",
+  lob: "Từ thấp hất vợt lên dốc, không cần mạnh.",
+  drive: "Vung ngang từ phải sang trái (hoặc ngược lại), giữ đầu vợt ngang.",
+};
+for (const k of KINDS) {
+  const b = document.createElement("button");
+  b.dataset.k = k; b.innerHTML = PM.NAMES[k] + "<small>0/0</small>";
+  b.onclick = () => {
+    target = target === k ? null : k;
+    for (const o of $("targets").children) o.classList.toggle("on", o.dataset.k === target);
+    $("targetHow").textContent = target ? HOW[target] : "Chọn một động tác rồi làm thử; trang sẽ báo máy nhận đúng hay sai.";
+    $("verdict").textContent = ""; $("verdict").className = "";
+  };
+  $("targets").appendChild(b);
+}
+
+function showSwing(sw) {
+  const { kind, why } = PM.classify(sw);
+  const rise = sw.elev - sw.elev0;
+  let sweep = Math.abs(sw.yaw - sw.yaw0); if (sweep > 180) sweep = 360 - sweep;
+  $("lastName").textContent = PM.NAMES[kind];
+  $("lastWhy").textContent = "Vì: " + why;
+  $("nPeak").textContent = Math.round(sw.peak) + "°/s";
+  $("nRise").textContent = (rise >= 0 ? "↑" : "↓") + Math.abs(Math.round(rise)) + "°";
+  $("nSweep").textContent = Math.round(sweep) + "°";
+  $("nHigh").textContent = Math.round(sw.elevMax) + "°";
+  if (!target) return;
+  const want = target, got = kind === "fast" && want === "drive" ? "drive" : kind;
+  const t = tally[want] || (tally[want] = { ok: 0, n: 0 });
+  t.n++; if (got === want) t.ok++;
+  $("verdict").textContent = got === want ? "✓ Đúng: " + PM.NAMES[kind] : "✗ Máy nhận là " + PM.NAMES[kind] + " (muốn " + PM.NAMES[want] + ")";
+  $("verdict").className = got === want ? "ok" : "bad";
+  for (const b of $("targets").children) { const x = tally[b.dataset.k]; if (x) b.querySelector("small").textContent = x.ok + "/" + x.n; }
+}
+
+// ---------- Kết nối ----------
+const padUrl = (code) => {
+  const u = new URL("pad.html", location.href);
+  if (code) u.searchParams.set("c", code);
+  u.searchParams.set("game", "motion");
+  for (const k of ["peer", "relay", "via"]) if (params.get(k)) u.searchParams.set(k, params.get(k));
+  return u;
+};
+$("padUrl").textContent = padUrl().host + padUrl().pathname;
+const link = TiltLink.hostScreen({
+  game: "motion",
+  onCode(code) {
+    $("codeOut").textContent = code; $("qr").innerHTML = "";
+    new QRCode($("qr"), { text: padUrl(code).href, width: 150, height: 150, correctLevel: QRCode.CorrectLevel.M });
+    $("padText").textContent = "Phòng " + code + " · chờ điện thoại";
+  },
+  onPads(n, { relay }) {
+    $("padDot").classList.toggle("live", n > 0);
+    $("padText").textContent = n ? "Điện thoại đã kết nối" + (relay ? " (qua trung gian)" : "") : "Phòng " + $("codeOut").textContent + " · chờ điện thoại";
+    if (n) motion.center();
+  },
+  onMessage(d) {
+    if (d.t === "reset") motion.center();
+    if (d.t === "orient") motion.onOrient(d);
+  },
+  onError(err) { $("padText").textContent = "Không mở được phòng (" + (err.type || err.message) + ")"; },
+});
+$("centerBtn").onclick = () => motion.center();
+$("gameBtn").onclick = () => link.goTo("picklefp");
+
+// ---------- Vẽ ----------
+const TH = PM.TH, SPEED_MAX = 1500;
+for (const v of [TH.start, TH.dink, TH.fast]) {
+  const t = document.createElement("span"); t.className = "tick"; t.style.left = (v / SPEED_MAX * 100) + "%"; $("speedBarBox").appendChild(t);
+}
+function setCentered(bar, frac) {   // thanh có mốc 0 ở giữa
+  const f = Math.max(-1, Math.min(1, frac));
+  bar.style.left = (50 + Math.min(0, f) * 50) + "%"; bar.style.width = Math.abs(f) * 50 + "%";
+}
+const chart = $("chart"), cg = chart.getContext("2d");
+function drawChart() {
+  const w = chart.clientWidth, h = chart.clientHeight, dpr = devicePixelRatio || 1;
+  if (chart.width !== Math.round(w * dpr)) { chart.width = Math.round(w * dpr); chart.height = Math.round(h * dpr); }
+  cg.setTransform(dpr, 0, 0, dpr, 0, 0); cg.clearRect(0, 0, w, h);
+  const now = samples.length ? samples[samples.length - 1].ts : 0;
+  const x = (ts) => w - (now - ts) / 3000 * w, y = (e) => h / 2 - e / 90 * (h / 2 - 6);
+  for (const s of swings) {
+    if (s.ts1 && now - s.ts1 > 3000) continue;
+    const back = s.sw.back;                                   // biết sau khi cả nhóm xong
+    cg.fillStyle = back ? "rgba(107,111,156,.22)" : "rgba(255,107,138,.28)";       // lấy đà: xám; cú đánh: hồng
+    cg.fillRect(x(s.ts0), 0, x(s.ts1 || now) - x(s.ts0), h);
+  }
+  cg.strokeStyle = "rgba(107,111,156,.35)"; cg.lineWidth = 1;
+  for (const e of [-60, -30, 0, 30, 60]) { cg.beginPath(); cg.moveTo(0, y(e)); cg.lineTo(w, y(e)); cg.stroke(); }
+  cg.fillStyle = "rgba(107,111,156,.8)"; cg.font = "10px system-ui"; cg.fillText("+60°", 2, y(60) - 2); cg.fillText("0°", 2, y(0) - 2); cg.fillText("−60°", 2, y(-60) - 2);
+  const line = (key, color, scale) => {
+    cg.strokeStyle = color; cg.lineWidth = 2; cg.beginPath();
+    samples.forEach((s, i) => { const yy = key === "speed" ? h - Math.min(1, s.speed / SPEED_MAX) * (h - 4) : y(s.elev); i ? cg.lineTo(x(s.ts), yy) : cg.moveTo(x(s.ts), yy); });
+    cg.stroke();
+  };
+  line("speed", "rgba(255,200,87,.8)"); line("elev", "#2f6fff");
+}
+
+const head3 = new T.Vector3(), col = new T.Color();
+function frame() {
+  const live = motion.live();
+  $("connect").hidden = live || motion.centered;
+  if (motion.centered) PM.place(paddle, motion.q, EYE);
+  // Vệt đầu vợt
+  head3.set(0, 0.33, 0).applyQuaternion(paddle.quaternion).add(paddle.position);
+  trail.push({ p: head3.clone(), s: motion.speed });
+  if (trail.length > TRAIL) trail.shift();
+  const pos = trailGeo.attributes.position.array, cl = trailGeo.attributes.color.array;
+  for (let i = 0; i < TRAIL; i++) {
+    const t = trail[Math.max(0, trail.length - TRAIL + i)] || { p: head3, s: 0 };
+    pos[i * 3] = t.p.x; pos[i * 3 + 1] = t.p.y; pos[i * 3 + 2] = t.p.z;
+    col.setHSL(0.6 - Math.min(1, t.s / SPEED_MAX) * 0.6, 0.9, 0.55);
+    cl[i * 3] = col.r; cl[i * 3 + 1] = col.g; cl[i * 3 + 2] = col.b;
+  }
+  trailGeo.attributes.position.needsUpdate = true; trailGeo.attributes.color.needsUpdate = true;
+  // Số đo
+  const t = motion.tip;
+  setCentered($("elevBar"), t.elev / 90); $("elevVal").textContent = Math.round(t.elev) + "°";
+  setCentered($("yawBar"), t.yaw / 90); $("yawVal").textContent = Math.round(t.yaw) + "°";
+  $("speedBar").style.width = Math.min(100, motion.speed / SPEED_MAX * 100) + "%";
+  $("speedBar").style.background = motion.speed > TH.fast ? "var(--hot)" : motion.speed > TH.dink ? "var(--ball)" : "var(--coin)";
+  $("speedVal").textContent = Math.round(motion.speed) + "°/s";
+  $("swingFlag").classList.toggle("on", !!motion.swing);
+  drawChart();
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+resize(); placeCamera();
+// Chưa có điện thoại: vợt đứng ở tư thế sẵn sàng.
+PM.place(paddle, PM.poseFrom(new T.Quaternion(), -0.5, 0), EYE);
+requestAnimationFrame(frame);
+if (params.has("debug")) window.__motion = { motion, onOrient: (d) => motion.onOrient(d), paddle, setView: (v) => $({ eye: "vEye", side: "vSide", top: "vTop" }[v]).click() };
+})();
+</script>
+</body>
+</html>

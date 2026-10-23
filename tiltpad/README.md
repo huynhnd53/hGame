@@ -9,6 +9,7 @@ từ đó chọn game trên máy tính hoặc ngay trên điện thoại. Đổi
 | `fruit.html` | Chém hoa quả: điện thoại là thanh kiếm |
 | `pickleball.html` | Pickleball góc nhìn thứ ba: điện thoại là vợt |
 | `pickleball-fp.html` | Pickleball góc nhìn thứ nhất: vợt xoay theo tay, nhận động tác vụt, smash, dink |
+| `motion.html` | Kiểm tra cử động vợt: vợt có theo đúng tay, máy nhận đúng động tác không |
 | `cube.html` | Khối 3D (hình điện thoại) xoay theo điện thoại |
 | `check.html` | Kiểm tra kết nối |
 
@@ -89,20 +90,39 @@ luật, cùng máy, cùng vòng canh nhịp. Khác:
 
 - Camera ở mắt người chơi (1,55 m), quay đầu một phần theo bóng; không thấy thân mình. Bóng tới trước mặt, chếch phải
   (thuận tay) hoặc trái (trái tay), cách mắt 0,85 m nên luôn nhìn thấy lúc chạm.
-- Cây vợt ở góc dưới **xoay đúng theo điện thoại** (quaternion điện thoại sau khi căn giữa, nhân với tư thế gốc của vợt).
-  Không có điện thoại thì vợt chạy hoạt cảnh theo kiểu đánh.
-- **Nhận động tác** từ đường đi của đầu vợt (trục đỉnh máy) trong cú vung: góc ngóc lên/chúc xuống so với ~0,12 s
-  trước cú vung, góc quét ngang và tốc độ xoay cao nhất:
+- Cây vợt **lấy đúng tư thế điện thoại trong không gian** (`public/paddle.js`): cán vợt là đỉnh máy, mặt vợt là mặt
+  màn hình (chấm xanh), trong hệ "sân" Y lên trời, −Z về màn hình máy tính. *Căn giữa* chỉ lấy hướng nào là phía màn
+  hình (theo đỉnh máy, hoặc lưng máy nếu đang dựng đứng); góc xoay giao diện điện thoại bị bỏ qua để màn hình tự xoay
+  giữa cú vung không làm vợt nhảy. Vợt đặt trong sân theo người (tay phải, thấp), không gắn vào camera.
+- **Nhận động tác** từ đường đi của đầu vợt so với mặt đất: góc ngóc lên/chúc xuống, góc quét ngang, tốc độ xoay.
+  Một cú đánh thường gồm lấy đà → đánh → đưa vợt về; các đoạn nối nhau (đầu vợt đổi chiều, hoặc đoạn sau bắt đầu ngay)
+  được gom lại và **đoạn nhanh nhất là cú đánh**, nên giơ vợt lên trước smash hay đưa vợt về sau cú vụt không bị nhận
+  nhầm. Ngưỡng nằm ở `PaddleMotion.TH`:
 
   | Động tác | Nhận khi | Bóng đi |
   | --- | --- | --- |
-  | Dink | tốc độ cao nhất dưới ~420°/s | bổng (xoáy ngược), rơi vào vùng cấm |
-  | Smash | vợt đang giơ cao (> 12°) rồi chúc xuống > 30°, nhiều hơn quét ngang | nhanh, cắm xuống; bóng thấp hơn 1,05 m thì vào lưới |
+  | Dink | tốc độ cao nhất dưới ~420°/s (bắt đầu tính vung từ 170°/s) | bổng (xoáy ngược), rơi vào vùng cấm |
+  | Smash | vợt từng giơ cao (> 12°) rồi chúc xuống > 30°, nhiều hơn quét ngang | nhanh, cắm xuống; bóng thấp hơn 1,05 m thì vào lưới |
   | Vụt từ dưới lên | đầu vợt đi lên > 25°, nhiều hơn quét ngang | xoáy lên: nhanh, qua lưới cao rồi cắm xuống; bóng đã cao thì thành lốp |
   | Lốp | đi lên > 70° mà chậm hơn ~750°/s | vồng qua đầu, rơi cuối sân |
   | Đánh thẳng / đánh mạnh | còn lại (vung ngang), nhanh hơn ~950°/s là đánh mạnh | thẳng, không xoáy |
 
   Góc dưới bên phải hiện động tác vừa nhận (kèm tốc độ, góc lên/xuống, Đẹp/Sớm/Muộn), cả khi vung hụt, để tập.
+
+## Kiểm tra cử động vợt (`motion.html`)
+
+https://huynhnd53.github.io/hGame/tiltpad/motion.html – trang chỉ để xem vợt có theo đúng tay và máy nhận đúng động tác
+không, dùng đúng `paddle.js` của game:
+
+- Vợt 3D theo tay, xem **từ mắt** (như trong game), **từ bên** hoặc **từ trên** (có người để so); vệt đầu vợt 1,2 giây
+  gần nhất, màu theo tốc độ.
+- Số đo trực tiếp: đầu vợt ngóc/chúc (độ), lệch trái/phải, tốc độ xoay với các ngưỡng.
+- Biểu đồ độ cao đầu vợt 3 giây gần nhất: đoạn hồng là cú đánh, đoạn xám là lấy đà/đưa về.
+- Cú vung vừa rồi: tên động tác, **vì sao** (ví dụ "đầu vợt từng giơ 70° rồi chúc xuống 100°"), tốc độ cao nhất, góc
+  lên/xuống, góc quét ngang, góc giơ cao nhất.
+- Tập từng động tác: chọn Vụt / Smash / Dink / Lốp / Đánh thẳng, làm thử, trang báo đúng/sai và đếm số lần đúng.
+- Mở từ menu game góc nhìn thứ nhất (nút "Kiểm tra cử động vợt"), trang chọn game, hoặc chọn trên điện thoại.
+
 - Xoáy làm đổi trọng lực hiệu dụng của quả bóng (xoáy lên +3,5 m/s², dink −1,2 m/s²); máy giải đường bay và đoán điểm
   rơi với đúng trọng lực đó nên vẫn khớp tuyệt đối.
 - Bàn phím: `Space`/chuột vụt, `C` smash (chuột phải), `Z` dink (Shift + chuột), `X` lốp, `V` đánh thẳng.

@@ -1,0 +1,8 @@
+{
+  "name": "tiltpad",
+  "version": "1.0.0",
+  "description": "Xoay điện thoại – khối 3D trên máy tính xoay theo (Node + Socket.IO)",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "dependencies": { "express": "^4.19.2", "socket.io": "^4.7.5" }
+}

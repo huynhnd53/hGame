@@ -1,27 +1,10 @@
 {
-  "name": "vgang-online",
+  "name": "hgame",
   "private": true,
-  "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
-    "test": "vitest run",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "hyparquet": "^1.31.5",
-    "hyparquet-compressors": "^1.1.2",
-    "leaflet": "^1.9.4",
-    "three": "^0.186.1"
-  },
-  "devDependencies": {
-    "@types/leaflet": "^1.9.22",
-    "@types/node": "^22.20.5",
-    "@types/three": "^0.186.0",
-    "typescript": "^7.0.2",
-    "vite": "^8.3.2",
-    "vitest": "^5.0.3"
+    "install:all": "npm ci --prefix vgang-online && npm ci --prefix newmap",
+    "test": "npm test --prefix vgang-online && npm test --prefix newmap",
+    "build": "npm run build --prefix vgang-online && npm run build --prefix newmap && node scripts/assemble.mjs"
   }
 }

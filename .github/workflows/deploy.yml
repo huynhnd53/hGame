@@ -24,7 +24,11 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+          cache-dependency-path: |
+            vgang-online/package-lock.json
+            newmap/package-lock.json
+      # Each project installs, tests and builds on its own; the root script puts both into dist/.
+      - run: npm run install:all
       - run: npm test
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3

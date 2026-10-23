@@ -22,6 +22,7 @@
       <button class="primary" id="joinBtn">Kết nối</button>
     </div>
     <p class="muted hint" id="joinErr"></p>
+    <p class="muted hint" id="checkLink" hidden><a href="check.html">Kiểm tra kết nối của máy này</a></p>
   </div>
 </div>
 
@@ -80,7 +81,7 @@ async function join(){
     },
     onClosed() { joined = false; $("padState").textContent = "Màn hình đã đóng"; },
     onMessage(msg) { if (msg.t === "buzz" && navigator.vibrate) navigator.vibrate(Math.min(400, Number(msg.ms) || 30)); },
-    onError(text) { $("joinErr").textContent = text; $("joinBtn").disabled = false; },
+    onError(text) { $("joinErr").textContent = text; $("joinBtn").disabled = false; $("checkLink").hidden = false; },
   });
 }
 

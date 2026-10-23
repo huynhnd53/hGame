@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kiểm tra kết nối – Tilt Pad</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.4/dist/mqtt.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="link.js"></script>
+<style>
+  main { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: .75rem; }
+  h2 { font-size: 1.1rem; margin: 0 0 .4rem; }
+  .rows { display: grid; grid-template-columns: 1.6rem 1fr; gap: .35rem .5rem; align-items: start; }
+  .rows .ic { font-weight: 800; text-align: center; }
+  .ok { color: var(--coin); } .bad { color: var(--hot); } .warn { color: var(--ball); } .wait { color: var(--muted); }
+  .rows small { display: block; color: var(--muted); word-break: break-word; }
+  #verdict li { margin: .3rem 0; line-height: 1.4; }
+  .buttons { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .buttons .ghost { margin-top: 0; }
+  .pair { display: grid; grid-template-columns: auto 1fr; gap: 1rem; align-items: center; }
+  .pair .code { font-size: 2.6rem; text-align: left; margin: 0; }
+  .pair #qr { margin: 0; }
+  @media (max-width: 560px) { .pair { grid-template-columns: 1fr; } .pair .code { text-align: center; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <h1>Kiểm tra kết nối</h1>
+    <p class="muted">Mở trang này trên <b>cả máy tính và điện thoại</b>, đợi chạy xong, rồi bấm “Sao chép kết quả” và gửi đi.</p>
+  </div>
+
+  <div class="card"><h2>Kết luận</h2><ul id="verdict"><li class="wait">Đang kiểm tra…</li></ul>
+    <div class="buttons"><button class="primary" id="copyBtn">Sao chép kết quả</button><button class="ghost" id="againBtn">Chạy lại</button></div>
+    <p class="muted" id="copied"></p>
+  </div>
+
+  <div class="card"><h2>1. Trình duyệt</h2><div class="rows" id="sec-env"></div></div>
+  <div class="card"><h2>2. Máy chủ ghép cặp và trung gian</h2><div class="rows" id="sec-srv"></div></div>
+  <div class="card"><h2>3. Đường mạng WebRTC (ICE)</h2><div class="rows" id="sec-ice"></div></div>
+
+  <div class="card">
+    <h2>4. Thử nối hai máy bằng WebRTC</h2>
+    <div id="pairHost">
+      <p class="muted">Trên máy tính bấm nút dưới, rồi dùng điện thoại quét mã QR (bằng app Camera, không dùng Zalo).</p>
+      <div class="buttons"><button class="ghost" id="pairBtn">Mở phòng thử</button></div>
+      <div class="pair" id="pairBox" hidden>
+        <div><div class="code" id="pairCode">····</div><p class="muted">Điện thoại mở <b id="pairUrl"></b></p></div>
+        <div id="qr"></div>
+      </div>
+    </div>
+    <div class="rows" id="sec-pair"></div>
+  </div>
+</main>
+
+<script>
+(() => {
+"use strict";
+const $ = (id) => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const L = window.TiltLink;
+const log = [];          // dòng chữ để sao chép
+const findings = [];     // kết luận
+
+// Mỗi dòng kết quả: ✓ đạt, ✗ hỏng, ! đáng chú ý, … đang chạy.
+function row(sec, label) {
+  const ic = document.createElement("span"); ic.className = "ic wait"; ic.textContent = "…";
+  const tx = document.createElement("div"); tx.textContent = label;
+  const sm = document.createElement("small"); tx.appendChild(sm);
+  $(sec).append(ic, tx);
+  const entry = { sec, label, state: "…", detail: "" };
+  log.push(entry);
+  return (state, detail = "") => {
+    const cls = { "✓": "ok", "✗": "bad", "!": "warn", "…": "wait" }[state];
+    ic.className = "ic " + cls; ic.textContent = state; sm.textContent = detail;
+    entry.state = state; entry.detail = detail;
+  };
+}
+const ms = (t) => Math.round(performance.now() - t) + " ms";
+const withTimeout = (p, t, what) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(what + ": quá " + t / 1000 + " s")), t))]);
+
+// ---------- 1. Trình duyệt ----------
+function checkEnv() {
+  const ua = navigator.userAgent;
+  const inApp = /Zalo/i.test(ua) ? "Zalo" : /FBAN|FBAV|FB_IAB/i.test(ua) ? "Facebook" : /Instagram/i.test(ua) ? "Instagram"
+    : /Line\//i.test(ua) ? "Line" : /; wv\)/.test(ua) ? "WebView" : "";
+  row("sec-env", "Thiết bị")("✓", ua);
+  const r1 = row("sec-env", "Trình duyệt trong app");
+  if (inApp) { r1("!", "Đang mở trong " + inApp + ". Nên mở bằng Safari/Chrome."); findings.push("Đang mở trong trình duyệt của " + inApp + ": trình duyệt trong app hay chặn WebRTC và cảm biến. Mở bằng Safari/Chrome (quét QR bằng app Camera)."); }
+  else r1("✓", "Không");
+  const r2 = row("sec-env", "HTTPS");
+  if (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1") r2("✓", location.protocol);
+  else { r2("✗", "Trang mở qua http: – iPhone sẽ không cho đọc cảm biến"); findings.push("Trang không chạy HTTPS."); }
+  const r3 = row("sec-env", "WebRTC (RTCPeerConnection)");
+  if (typeof RTCPeerConnection === "function") r3("✓", "Có"); else { r3("✗", "Không có"); findings.push("Trình duyệt này không có WebRTC: chỉ nối được qua máy chủ trung gian."); }
+  const r4 = row("sec-env", "Thư viện kết nối");
+  const libs = [typeof Peer === "function" ? "PeerJS ✓" : "PeerJS ✗", typeof mqtt === "object" ? "MQTT ✓" : "MQTT ✗"];
+  r4(typeof Peer === "function" && typeof mqtt === "object" ? "✓" : "✗", libs.join(" · "));
+  if (typeof Peer !== "function") findings.push("Không tải được thư viện PeerJS từ cdn.jsdelivr.net (mạng chặn CDN?).");
+  const r5 = row("sec-env", "Cảm biến xoay");
+  r5(typeof DeviceOrientationEvent !== "undefined" ? "✓" : "!", typeof DeviceOrientationEvent === "undefined" ? "Không có (bình thường với máy tính)"
+    : typeof DeviceOrientationEvent.requestPermission === "function" ? "Có, cần bấm Cho phép (iOS)" : "Có");
+}
+
+// ---------- 2. Máy chủ ----------
+async function checkServers() {
+  const r1 = row("sec-srv", "Máy chủ ghép cặp PeerJS" + (params.get("peer") ? " (" + params.get("peer") + ")" : " (0.peerjs.com)"));
+  if (typeof Peer !== "function") r1("✗", "Không có thư viện");
+  else {
+    const t = performance.now();
+    try {
+      await withTimeout(new Promise((res, rej) => {
+        const p = new Peer(L.peerOptions());
+        p.on("open", () => { p.destroy(); res(); });
+        p.on("error", (e) => { p.destroy(); rej(new Error(e.type)); });
+      }), 10000, "không trả lời");
+      r1("✓", "Vào được sau " + ms(t));
+    } catch (e) { r1("✗", e.message); findings.push("Không vào được máy chủ ghép cặp PeerJS (" + e.message + "): WebRTC không ghép cặp được, chỉ còn đường trung gian."); }
+  }
+  let anyRelay = false;
+  await Promise.all(L.relayUrls().map(async (url) => {
+    const r = row("sec-srv", "Máy chủ trung gian " + url.replace(/^wss?:\/\//, ""));
+    if (typeof mqtt !== "object") { r("✗", "Không có thư viện"); return; }
+    const t = performance.now();
+    try {
+      await withTimeout(new Promise((res, rej) => {
+        const c = mqtt.connect(url, { connectTimeout: 8000, reconnectPeriod: 0, clientId: "hgtp-chk-" + Math.random().toString(36).slice(2, 8) });
+        c.on("connect", () => { c.end(true); res(); });
+        c.on("error", (e) => { c.end(true); rej(e); });
+        c.on("close", () => rej(new Error("bị đóng")));
+      }), 9000, "không trả lời");
+      r("✓", "Vào được sau " + ms(t)); anyRelay = true;
+    } catch (e) { r("✗", e.message || String(e)); }
+  }));
+  if (!anyRelay) findings.push("Không vào được máy chủ trung gian MQTT nào: khi WebRTC hỏng thì không còn đường dự phòng.");
+}
+
+// ---------- 3. ICE ----------
+async function gather(iceServers, policy = "all", limit = 9000) {
+  const pc = new RTCPeerConnection({ iceServers, iceTransportPolicy: policy });
+  pc.createDataChannel("probe");
+  const cands = [], errors = [];
+  const t = performance.now();
+  const done = new Promise((res) => {
+    pc.onicecandidate = (e) => { if (!e.candidate) res(); else if (e.candidate.candidate) cands.push(e.candidate); };
+    pc.onicegatheringstatechange = () => { if (pc.iceGatheringState === "complete") res(); };
+    setTimeout(res, limit);
+  });
+  pc.onicecandidateerror = (e) => errors.push((e.url || "") + " " + e.errorCode + " " + (e.errorText || ""));
+  await pc.setLocalDescription(await pc.createOffer());
+  await done;
+  const took = ms(t);
+  pc.close();
+  return { cands, errors, took };
+}
+const typeOf = (c) => c.type || (/ typ (\w+)/.exec(c.candidate) || [])[1];
+const portOf = (c) => c.port || +(c.candidate.split(" ")[5]);
+const addrOf = (c) => c.address || c.candidate.split(" ")[4];
+
+const ice = { host: 0, srflx: 0, relayUdp: false, relayTcp: false, symmetric: null };
+async function checkIce() {
+  if (typeof RTCPeerConnection !== "function") { row("sec-ice", "WebRTC")("✗", "Trình duyệt không có WebRTC"); return; }
+  const stuns = [["Google", "stun:stun.l.google.com:19302"], ["Cloudflare", "stun:stun.cloudflare.com:3478"]];
+  const rHost = row("sec-ice", "Địa chỉ trong mạng nội bộ (host)");
+  const rStun = row("sec-ice", "Địa chỉ công khai qua STUN (srflx)");
+  const rNat = row("sec-ice", "Kiểu NAT");
+  const turn = L.ICE_SERVERS.find((s) => [].concat(s.urls).some((u) => u.startsWith("turn:")));
+  const urls = [].concat(turn.urls);
+  const rU = row("sec-ice", "TURN PeerJS qua UDP (relay)");
+  const rT = row("sec-ice", "TURN PeerJS qua TCP (relay)");
+  // Ba lần dò chạy song song cho nhanh.
+  const [both, u, t] = await Promise.all([
+    gather(stuns.map(([, x]) => ({ urls: x }))),
+    gather([{ ...turn, urls }], "relay"),
+    gather([{ ...turn, urls: urls.map((x) => x + "?transport=tcp") }], "relay"),
+  ]);
+  const host = both.cands.filter((c) => typeOf(c) === "host");
+  const srflx = both.cands.filter((c) => typeOf(c) === "srflx" && (c.protocol || "udp") === "udp");
+  ice.host = host.length; ice.srflx = srflx.length;
+  rHost(host.length ? "✓" : "!", host.length ? host.length + " địa chỉ (" + [...new Set(host.map((c) => (c.protocol || "") + " " + (/\.local$/.test(addrOf(c)) ? "ẩn bằng mDNS" : addrOf(c))))].join(", ") + ")" : "Không có");
+  if (srflx.length) {
+    rStun("✓", [...new Set(srflx.map((c) => addrOf(c) + ":" + portOf(c)))].join(", ") + " · " + both.took);
+    // Cùng một cổng trong máy mà mỗi máy chủ STUN thấy một cổng ngoài khác nhau → NAT đối xứng, khó xuyên.
+    const ext = new Set(srflx.map((c) => addrOf(c) + ":" + portOf(c)));
+    const bases = new Set(srflx.map((c) => (c.relatedAddress || "") + ":" + (c.relatedPort || "")));
+    const hidden = [...bases].every((b) => b === ":" || b.startsWith("0.0.0.0"));
+    const hostUdp = host.filter((c) => (c.protocol || "udp") === "udp").length || 1;
+    ice.symmetric = hidden ? ext.size > hostUdp : ext.size > bases.size;
+    if (ice.symmetric) { rNat("!", "Đối xứng (symmetric) – " + ext.size + " cổng ngoài khác nhau"); findings.push("Mạng của máy này dùng NAT đối xứng (thường gặp ở 4G/5G): khó nối thẳng với máy khác mạng, cần TURN hoặc đường trung gian."); }
+    else rNat("✓", "Dễ xuyên (cùng một cổng ngoài cho mọi máy chủ STUN)");
+  } else {
+    rStun("✗", "Không lấy được" + (both.errors.length ? " · " + both.errors.slice(0, 2).join("; ") : "") + " · " + both.took);
+    rNat("!", "Không biết (không có srflx)");
+    findings.push("Không hỏi được STUN: mạng này có thể chặn UDP. WebRTC chỉ còn nối được trong cùng mạng nội bộ hoặc qua TURN.");
+  }
+  const relays = (r) => r.cands.filter((c) => typeOf(c) === "relay");
+  ice.relayUdp = relays(u).length > 0; ice.relayTcp = relays(t).length > 0;
+  rU(ice.relayUdp ? "✓" : "✗", ice.relayUdp ? relays(u).length + " địa chỉ · " + u.took : "Không trả lời" + (u.errors.length ? " · " + u.errors.slice(0, 2).join("; ") : "") + " · " + u.took);
+  rT(ice.relayTcp ? "✓" : "✗", ice.relayTcp ? relays(t).length + " địa chỉ · " + t.took : "Không trả lời" + (t.errors.length ? " · " + t.errors.slice(0, 2).join("; ") : "") + " · " + t.took);
+  if (!ice.relayUdp && !ice.relayTcp) findings.push("Máy chủ chuyển tiếp TURN miễn phí của PeerJS không trả lời: hai máy khác mạng mà không xuyên NAT được thì WebRTC sẽ hỏng.");
+}
+
+// ---------- 4. Thử nối hai máy ----------
+async function selectedPair(pc) {
+  if (!pc) return null;
+  const st = await pc.getStats();
+  let pair = null;
+  st.forEach((r) => { if (r.type === "transport" && r.selectedCandidatePairId) pair = st.get(r.selectedCandidatePairId); });
+  if (!pair) st.forEach((r) => { if (!pair && r.type === "candidate-pair" && r.state === "succeeded" && (r.nominated || r.selected)) pair = r; });
+  if (!pair) return null;
+  const l = st.get(pair.localCandidateId) || {}, rr = st.get(pair.remoteCandidateId) || {};
+  return { local: l.candidateType, remote: rr.candidateType, proto: l.protocol, rtt: pair.currentRoundTripTime };
+}
+const pairName = (p) => !p ? "không rõ"
+  : p.local === "relay" || p.remote === "relay" ? "qua máy chuyển tiếp TURN"
+  : p.local === "host" && p.remote === "host" ? "nối thẳng trong cùng mạng nội bộ"
+  : "nối thẳng qua Internet (xuyên NAT)";
+const pairText = (p) => p ? pairName(p) + " · " + p.local + " ↔ " + p.remote + " (" + p.proto + ")" : "không đọc được";
+
+const pairRows = {};
+const pr = (k, label) => (pairRows[k] = pairRows[k] || row("sec-pair", label));
+let pairResult = null;
+
+function watchIce(conn, label) {
+  const states = [];
+  const r = pr("ice", "Trạng thái ICE");
+  conn.on("iceStateChanged", (s) => { states.push(s); r(s === "failed" ? "✗" : s === "connected" || s === "completed" ? "✓" : "…", states.join(" → ")); });
+  return states;
+}
+
+function startPairHost() {
+  const code = Array.from({ length: 4 }, () => "ABCDEFGHJKMNPQRSTUVWXYZ"[Math.floor(Math.random() * 23)]).join("");
+  const u = new URL(location.href.split("?")[0]);
+  u.searchParams.set("c", code);
+  for (const k of ["peer", "relay"]) if (params.get(k)) u.searchParams.set(k, params.get(k));
+  $("pairBox").hidden = false; $("pairBtn").disabled = true;
+  $("pairCode").textContent = code; $("pairUrl").textContent = u.host + u.pathname + "?c=" + code;
+  $("qr").innerHTML = "";
+  new QRCode($("qr"), { text: u.href, width: 132, height: 132, correctLevel: QRCode.CorrectLevel.M });
+  const rOpen = pr("open", "Phòng thử trên máy chủ ghép cặp");
+  const rConn = pr("conn", "Điện thoại nối vào");
+  rConn("…", "Đang chờ điện thoại quét mã");
+  const peer = new Peer(L.PREFIX + "check-" + code, L.peerOptions());
+  peer.on("open", () => rOpen("✓", "Mã " + code));
+  peer.on("error", (e) => rOpen("✗", e.type + " " + (e.message || "")));
+  peer.on("connection", (conn) => {
+    rConn("…", "Điện thoại đã tìm thấy phòng, đang dò đường…");
+    watchIce(conn);
+    const timer = setTimeout(() => { if (!conn.open) { rConn("✗", "Không mở được kênh dữ liệu sau 20 s"); pairResult = "fail"; verdict(); } }, 20000);
+    conn.on("open", async () => {
+      clearTimeout(timer);
+      const p = await selectedPair(conn.peerConnection);
+      rConn("✓", pairText(p)); pairResult = p; verdict();
+    });
+    conn.on("data", (m) => {
+      if (m && m.t === "ping") conn.send({ t: "pong", i: m.i });
+      if (m && m.t === "report") { pr("rtt", "Độ trễ đo trên điện thoại")(m.rtt != null ? "✓" : "!", m.rtt != null ? "trung bình " + m.rtt + " ms, chậm nhất " + m.max + " ms" : "không đo được"); }
+    });
+  });
+}
+
+function startPairPad(code) {
+  $("pairHost").hidden = true;
+  const rConn = pr("conn", "Nối vào phòng thử " + code);
+  rConn("…", "Đang tìm phòng…");
+  const peer = new Peer(L.peerOptions());
+  const fail = (t) => { rConn("✗", t); pairResult = "fail"; verdict(); };
+  const timer = setTimeout(() => fail("Không nối được sau 20 s"), 20000);
+  peer.on("error", (e) => { clearTimeout(timer); fail(e.type === "peer-unavailable" ? "Không có phòng thử với mã này (máy tính đã bấm “Mở phòng thử” chưa?)" : e.type + " " + (e.message || "")); });
+  peer.on("open", () => {
+    const conn = peer.connect(L.PREFIX + "check-" + code, { serialization: "json" });
+    rConn("…", "Đã thấy máy chủ ghép cặp, đang dò đường…");
+    watchIce(conn);
+    conn.on("open", async () => {
+      clearTimeout(timer);
+      const p = await selectedPair(conn.peerConnection);
+      rConn("✓", pairText(p)); pairResult = p;
+      // Đo độ trễ: 20 lần ping qua kênh dữ liệu.
+      const rRtt = pr("rtt", "Độ trễ (đi và về)");
+      const sent = new Map(), rtts = [];
+      conn.on("data", (m) => { if (m && m.t === "pong" && sent.has(m.i)) rtts.push(performance.now() - sent.get(m.i)); });
+      for (let i = 0; i < 20; i++) { sent.set(i, performance.now()); conn.send({ t: "ping", i }); await new Promise((r) => setTimeout(r, 100)); }
+      await new Promise((r) => setTimeout(r, 600));
+      const avg = rtts.length ? Math.round(rtts.reduce((a, b) => a + b, 0) / rtts.length) : null;
+      const max = rtts.length ? Math.round(Math.max(...rtts)) : null;
+      rRtt(avg == null ? "✗" : avg < 80 ? "✓" : "!", avg == null ? "Không nhận được trả lời" : "trung bình " + avg + " ms, chậm nhất " + max + " ms (" + rtts.length + "/20)");
+      conn.send({ t: "report", rtt: avg, max });
+      verdict();
+    });
+  });
+}
+
+// ---------- Kết luận ----------
+function verdict() {
+  const items = [...findings];
+  if (pairResult === "fail") items.unshift("Hai máy KHÔNG nối được bằng WebRTC. Xem các dòng ✗ ở trên ở cả hai máy để biết vì sao; game vẫn chạy được qua đường trung gian.");
+  else if (pairResult) items.unshift("Hai máy nối được bằng WebRTC: " + pairName(pairResult) + ".");
+  if (!items.length) items.push("Máy này không có vấn đề gì. Bấm “Mở phòng thử” trên máy tính và quét mã bằng điện thoại để thử nối hai máy.");
+  $("verdict").innerHTML = "";
+  for (const t of items) { const li = document.createElement("li"); li.textContent = t; $("verdict").appendChild(li); }
+}
+
+function report() {
+  const lines = ["Kiểm tra kết nối Tilt Pad · " + new Date().toLocaleString("vi-VN"), location.href, ""];
+  lines.push("Kết luận:", ...[...$("verdict").querySelectorAll("li")].map((li) => "- " + li.textContent), "");
+  const names = { "sec-env": "1. Trình duyệt", "sec-srv": "2. Máy chủ", "sec-ice": "3. ICE", "sec-pair": "4. Nối hai máy" };
+  for (const [sec, name] of Object.entries(names)) {
+    const rows = log.filter((e) => e.sec === sec);
+    if (!rows.length) continue;
+    lines.push(name, ...rows.map((e) => `  ${e.state} ${e.label}${e.detail ? ": " + e.detail : ""}`));
+  }
+  return lines.join("\n");
+}
+$("copyBtn").onclick = async () => {
+  const text = report();
+  try { await navigator.clipboard.writeText(text); $("copied").textContent = "Đã sao chép. Dán vào tin nhắn để gửi."; }
+  catch { // trình duyệt không cho sao chép: hiện chữ để tự chọn
+    const ta = document.createElement("textarea"); ta.value = text; ta.rows = 12; ta.style.width = "100%";
+    $("copied").replaceChildren(ta); ta.select();
+  }
+};
+$("againBtn").onclick = () => location.reload();
+$("pairBtn").onclick = startPairHost;
+
+if (params.has("debug")) window.__check = { report };
+(async () => {
+  checkEnv();
+  const code = (params.get("c") || "").toUpperCase();
+  if (/^[A-Z]{4}$/.test(code) && typeof Peer === "function") startPairPad(code);
+  await Promise.all([checkServers(), checkIce().catch((e) => row("sec-ice", "Lỗi")("✗", e.message))]);
+  verdict();
+})();
+})();
+</script>
+</body>
+</html>

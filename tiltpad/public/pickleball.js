@@ -31,7 +31,10 @@ const WIN_AT = 11;
 // ---------- Cảnh 3D ----------
 const stage = $("stage");
 const renderer = new T.WebGLRenderer({ canvas: $("gl"), antialias: true });
-renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+// Độ phân giải tự hạ khi khung hình chậm (xem adaptResolution), tối đa 1,5× để máy màn hình nét vẫn mượt.
+const MAX_RATIO = Math.min(1.5, devicePixelRatio || 1);
+let pixelRatio = MAX_RATIO;
+renderer.setPixelRatio(pixelRatio);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = T.PCFShadowMap;
 const scene = new T.Scene();
@@ -42,7 +45,7 @@ scene.add(new T.HemisphereLight(0xffffff, 0x5d8a4f, 0.75));
 const sun = new T.DirectionalLight(0xffffff, 0.8);
 sun.position.set(-6, 14, 8);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(1024, 1024);
 Object.assign(sun.shadow.camera, { left: -10, right: 10, top: 12, bottom: -12, near: 1, far: 40 });
 scene.add(sun);
 
@@ -110,6 +113,9 @@ for (let i = 0; i < 26; i++) {
 }
 
 // Người chơi: dựng mặt quay về -z, tay phải ở +x. Máy xoay 180°.
+// Vai phải cao SHOULDER_Y khi đứng, lệch 0,27 m sang phải; mặt vợt cách vai REACH. Điểm chạm bóng tính từ đây nên
+// lúc vợt chạm bóng, mặt vợt nằm đúng chỗ quả bóng.
+const HIP_Y = 0.9, SHOULDER_DY = 0.58, SHOULDER_X = 0.27, REACH = 0.84;
 function makePlayer(shirt, shorts) {
   const g = new T.Group();
   const skin = mat(0xf1c7a1);
@@ -150,6 +156,13 @@ const trail = new T.Line(trailGeo, new T.LineBasicMaterial({ color: 0xffffff, tr
 trail.frustumCulled = false; scene.add(trail);
 const marker = new T.Mesh(new T.RingGeometry(0.16, 0.22, 24), new T.MeshBasicMaterial({ color: 0xffe14d, transparent: true, opacity: 0.7, depthWrite: false }));
 marker.rotation.x = -Math.PI / 2; marker.position.y = 0.01; marker.visible = false; scene.add(marker);
+// Vòng canh nhịp ở chỗ vợt sẽ chạm bóng: co dần lại, khép vào chấm (chuyển xanh) là lúc vung.
+const cueMat = new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthTest: false, side: T.DoubleSide });
+const cue = new T.Mesh(new T.RingGeometry(0.88, 1, 48), cueMat);
+const cueDot = new T.Mesh(new T.RingGeometry(0.1, 0.13, 32), new T.MeshBasicMaterial({ color: 0xffe14d, transparent: true, opacity: 0.9, depthTest: false, side: T.DoubleSide }));
+cue.renderOrder = cueDot.renderOrder = 10;
+cue.visible = cueDot.visible = false;
+scene.add(cue, cueDot);
 
 // ---------- Âm thanh tự tổng hợp ----------
 let audio = null;
@@ -179,7 +192,8 @@ let level = LEVELS[1];
 let demo = params.has("demo");
 const players = { 1: null, [-1]: null };
 function newPlayerState(side, mesh) {
-  return { side, x: 0, z: side * (HALF_L + 0.3), vx: 0, vz: 0, mesh, plan: null, swingAt: -9, swingHand: 1, runPhase: 0, shots: 0 };
+  return { side, x: 0, z: side * (HALF_L + 0.3), vx: 0, vz: 0, mesh, plan: null, runPhase: 0, shots: 0, face: 0,
+    anim: { phase: null, t0: 0, hand: 1, y: 1, from: 0.35 }, rx: 0, rz: 0 };
 }
 players[1] = newPlayerState(1, makePlayer(0x2f6fff, 0x1d2b55));
 players[-1] = newPlayerState(-1, makePlayer(0xe2463c, 0x3a2222));
@@ -242,7 +256,19 @@ function bounceIn(x, z, side, serve) {
 }
 
 // ---------- Lên kế hoạch đỡ bóng ----------
-const reachBody = (c, p, fore) => ({ x: c.x - p.side * (fore ? 0.62 : -0.62), z: c.z + p.side * 0.25 });
+/** Khom người khi bóng thấp. */
+const crouchFor = (y) => clamp(0.62 - y, 0, 0.3);
+/** Góc giơ tay (quanh vai, 0 là buông thẳng) để mặt vợt tới độ cao y. */
+function armAngle(y) {
+  const shoulderY = HIP_Y - 0.06 - crouchFor(y) + SHOULDER_DY;
+  return clamp(Math.acos(clamp((shoulderY - y) / REACH, -1, 1)), 0.35, 1.95);
+}
+/** Chỗ đứng để chạm bóng ở c: thuận tay thì bóng bên phải, trái tay thì vợt vắt sang trái thân. */
+function reachBody(c, p, fore) {
+  const out = REACH * Math.sin(armAngle(c.y));
+  const lat = fore ? SHOULDER_X + out : SHOULDER_X - out;
+  return { x: c.x - p.side * lat, z: c.z };
+}
 
 function plan(p) {
   const s = p.side;
@@ -284,21 +310,22 @@ function readyPosition(p) {
   return { x: clamp(ball.x * 0.35, -1.5, 1.5), z: s * (advance ? KITCHEN + 0.45 : HALF_L - 0.3) };
 }
 
+const ACCEL = 16, DECEL = 20;       // m/s²: tăng tốc, hãm lại khi tới chỗ – để chạy không giật cục
 function movePlayer(p, dt) {
   let tx, tz;
-  if (game.state === "serve") {
-    const pos = servePosition(p.side); tx = pos.x; tz = pos.z;
+  if (game.state === "serve" || (game.state === "point" && game.t - game.stateAt > 0.6)) {
+    const pos = servePosition(p.side); tx = pos.x; tz = pos.z;               // giữa hai điểm: thong thả đi về chỗ giao
   } else if (p.plan && !p.plan.letGo && game.state === "rally") { tx = p.plan.body.x; tz = p.plan.body.z; }
   else { const r = readyPosition(p); tx = r.x; tz = r.z; }
-  // Không chạy vào vùng cấm khi chưa cần (đánh bóng nảy trong vùng cấm thì vẫn được vào).
-  const speed = p.side === 1 && !demo ? PLAYER_SPEED : level.speed;
+  const speed = (p.side === 1 && !demo ? PLAYER_SPEED : level.speed) * (game.state === "point" ? 0.6 : 1);
   const dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz);
-  const want = d < 0.02 ? 0 : Math.min(speed, d / Math.max(dt, 0.05) * 0.5);
-  const vx = d ? dx / d * want : 0, vz = d ? dz / d * want : 0;
-  const k = Math.min(1, dt * 12);
-  p.vx += (vx - p.vx) * k; p.vz += (vz - p.vz) * k;
+  // Vận tốc mong muốn: chạy hết tốc, gần tới thì chậm dần để dừng đúng chỗ (v² = 2·a·d).
+  const want = d < 0.01 ? 0 : Math.min(speed, Math.sqrt(2 * DECEL * d));
+  const wx = d ? dx / d * want : 0, wz = d ? dz / d * want : 0;
+  const ex = wx - p.vx, ez = wz - p.vz, e = Math.hypot(ex, ez), maxDv = ACCEL * dt;
+  if (e > maxDv) { p.vx += ex / e * maxDv; p.vz += ez / e * maxDv; } else { p.vx = wx; p.vz = wz; }
   p.x += p.vx * dt; p.z += p.vz * dt;
-  if (Math.sign(p.z) !== p.side) p.z = p.side * 0.3;      // không sang sân bên kia
+  if (Math.sign(p.z) !== p.side) { p.z = p.side * 0.3; p.vz = 0; }      // không sang sân bên kia
 }
 
 // ---------- Giao bóng ----------
@@ -315,7 +342,12 @@ function servePosition(s) {
 function setupServe() {
   game.state = "serve"; game.stateAt = game.t;
   game.hitter = 0; game.shotN = 0; game.bounces = 0; game.bounceSide = 0;
-  for (const s of [1, -1]) { const p = players[s]; const pos = servePosition(s); p.x = pos.x; p.z = pos.z; p.vx = p.vz = 0; p.plan = null; p.shots = 0; }
+  for (const s of [1, -1]) {
+    const p = players[s], pos = servePosition(s);
+    // Đã đi bộ về gần chỗ giao trong lúc nghỉ; chỉ đặt thẳng vào chỗ nếu còn xa (đầu trận).
+    if (Math.hypot(pos.x - p.x, pos.z - p.z) > 0.6) { p.x = pos.x; p.z = pos.z; p.vx = p.vz = 0; }
+    p.plan = null; p.shots = 0; p.anim.phase = null;
+  }
   const fromRight = game.score[game.server] % 2 === 0;
   game.serveBoxSign = -(fromRight ? 1 : -1) * game.server;  // ô chéo bên kia
   ball.netHit = false; ball.vx = ball.vy = ball.vz = 0;
@@ -338,10 +370,10 @@ function clearsNet(from, v, margin) {
 }
 const SHOTS = {
   serve: { margin: 0.3, speed: 12, label: "Giao bóng" },
-  dink: { margin: 0.06, speed: 6.2, label: "Bỏ nhỏ" },
-  drive: { margin: 0.12, speed: 13.5, label: "Đánh thường" },
-  fast: { margin: 0.07, speed: 17, label: "Đánh mạnh" },
-  smash: { margin: 0.04, speed: 20, label: "Đập!" },
+  dink: { margin: 0.08, speed: 6.2, label: "Bỏ nhỏ" },
+  drive: { margin: 0.16, speed: 13.5, label: "Đánh thường" },
+  fast: { margin: 0.1, speed: 17, label: "Đánh mạnh" },
+  smash: { margin: 0.06, speed: 20, label: "Đập!" },
   lob: { margin: 1.4, speed: 9, label: "Lốp" },
 };
 /** Chọn đích theo kiểu đánh, rồi tìm thời gian bay ngắn nhất mà vẫn qua lưới an toàn. */
@@ -360,7 +392,7 @@ function shotVelocity(from, kind, aimX, sigma, depthJitter = 0) {
   let t = dist / spec.speed;
   for (let i = 0; i < 200 && !clearsNet(from, solve(from, tx, tz, t), spec.margin); i++) t += 0.02;
   if (kind === "lob") t = Math.max(t, 1.5 + dist / 25);
-  t *= 1 + gauss() * sigma * 0.06;                          // lệch nhịp: có thể vào lưới
+  t *= 1 + gauss() * sigma * 0.035;                         // lệch nhịp: thỉnh thoảng vào lưới
   return solve(from, tx, tz, Math.max(0.25, t));
 }
 
@@ -376,7 +408,7 @@ function hitBall(p, kind, aimX, sigma, quality) {
   Object.assign(ball, v); ball.netHit = false;
   game.hitter = s; game.shotN++; game.bounces = 0; game.bounceSide = 0;
   p.shots++; p.plan = null; players[-s].plan = null;
-  p.swingAt = game.t; p.swingHand = kind === "serve" ? 1 : (p.lastFore ? 1 : -1);
+  if (p.anim.phase !== "strike" || game.t - p.anim.t0 > STRIKE_T) strike(p, kind === "serve" || p.lastFore ? 1 : -1, from.y, true);
   game.samples = predict();
   players[-s].plan = plan(players[-s]);
   sound("pock", kind === "dink" ? 0.6 : 1);
@@ -407,23 +439,45 @@ function aiShot(p) {
 
 // ---------- Điều khiển của người chơi ----------
 const LEAD = 0.05;          // vung trước lúc chạm bóng chừng này là đẹp nhất
-const EARLY = 0.4, LATE = 0.16, WINDOW = 0.26;
-let swing = null;           // { at: giờ mô phỏng, kind, peak, up, aim }
+const EARLY = 0.45, WINDOW = 0.3;
+const lateLimit = () => (phoneCount ? 0.2 : 0.16);           // điện thoại chậm hơn phím một chút (mạng, nhận cú vung)
+let swing = null;           // { at: giờ mô phỏng, kind, aim, sw }
 let mouseAim = 0, mouseAimAt = -1e9;
+
+// ---------- Hoạt cảnh vung vợt ----------
+// Vung = lấy đà (WIND_T, vợt ra sau rồi chờ) + đánh (STRIKE_T, vợt quét ra trước). Mặt vợt chạm bóng ở IMPACT_U
+// của cú đánh, nên cú đánh bắt đầu trước lúc chạm bóng IMPACT_LEAD giây.
+const WIND_T = 0.14, STRIKE_T = 0.24, IMPACT_U = 0.35, RECOVER_T = 0.3;
+const IMPACT_LEAD = STRIKE_T * IMPACT_U;
+// Góc quay quanh vai (rad): thuận tay ra sau / chạm / theo đà; trái tay vắt sang trái (quanh π).
+const POSE = {
+  [1]: { ready: 0.35, back: -1.35, impact: 0, follow: 1.45 },
+  [-1]: { ready: 2.25, back: Math.PI + 1.15, impact: Math.PI, follow: Math.PI - 1.4 },
+};
+function windUp(p, hand, y) {
+  if (p.anim.phase === "wind" || (p.anim.phase === "strike" && game.t - p.anim.t0 < STRIKE_T)) return;
+  p.anim = { phase: "wind", t0: game.t, hand, y, from: p.mesh.shoulder.rotation.y };
+}
+/** Đánh: `atImpact` thì đặt hoạt cảnh đúng lúc vợt chạm bóng (giao bóng, đánh muộn). */
+function strike(p, hand, y, atImpact = false) {
+  p.anim = { phase: "strike", t0: game.t - (atImpact ? IMPACT_LEAD : 0), hand, y, from: p.anim.from };
+}
 
 function requestSwing(kind, info = {}) {
   if (game.state === "menu" || game.state === "over" || demo) return;
   unlockAudio();
   const p = players[1];
-  if (game.t - p.swingAt < 0.3) return;
   if (game.state === "serve") {
     if (game.server !== 1 || game.t - game.stateAt < 0.4) return;
     serveBall(p, info.aim ?? aimFromMouse());
     return;
   }
   if (game.state !== "rally") return;
-  swing = { at: game.t, kind, aim: info.aim ?? aimFromMouse(), sw: info.sw || null };
-  p.swingAt = game.t; p.swingHand = p.plan && !p.plan.letGo ? (p.plan.fore ? 1 : -1) : 1;
+  if (swing && game.t - swing.at < 0.15) return;                  // cùng một cú vung báo hai lần
+  // Cú vung mới thay cú cũ (không chặn): cử động lỡ tay ngay trước không nuốt mất cú thật.
+  swing = { at: Math.min(game.t, info.at ?? game.t), kind, aim: info.aim ?? aimFromMouse(), sw: info.sw || null };
+  const pl = p.plan && !p.plan.letGo ? p.plan : null;
+  windUp(p, pl ? (pl.fore ? 1 : -1) : 1, pl ? pl.y : 1);
   sound("whoosh");
 }
 const aimFromMouse = () => (performance.now() - mouseAimAt < 4000 ? mouseAim : 0);
@@ -439,9 +493,9 @@ function playerContact(p) {
   const pl = p.plan;
   if (!pl || pl.letGo || pl.miss || !swing) return;
   const dt = game.t - pl.t;
-  if (dt < -STEP / 2 || dt > LATE) return;
+  if (dt < -STEP / 2 || dt > lateLimit()) return;
   const reach = Math.hypot(pl.body.x - p.x, pl.body.z - p.z);
-  if (reach > 0.5) return;
+  if (reach > 0.6) return;
   const off = (pl.t - swing.at) - LEAD;                       // > 0: sớm, < 0: muộn
   if (off > EARLY - LEAD) return;                              // vung quá sớm, đã hụt
   const quality = clamp(1 - Math.abs(off) / WINDOW, 0, 1);
@@ -451,7 +505,7 @@ function playerContact(p) {
   // Cú vung điện thoại: kiểu đánh chốt lúc chạm bóng, theo tốc độ cao nhất đo được tới lúc đó.
   const kind = swing.kind === "phone" ? phoneKind(swing.sw) : swing.kind;
   swing = null;
-  hitBall(p, kind, aimX, 0.12 + (1 - quality) * 0.9, quality);
+  hitBall(p, kind, aimX, 0.1 + (1 - quality) * 0.55, quality);
 }
 
 function aiContact(p) {
@@ -494,10 +548,13 @@ function deviceToQuaternion(q, alpha, beta, gamma, orient) {
 }
 const raw = new T.Quaternion(), offset = new T.Quaternion(), rel = new T.Quaternion(), prevRel = new T.Quaternion();
 let pendingCenter = true, prevTs = 0, phoneCount = 0, relayCount = 0;
-const SWING_START = 260, SWING_END = 140;     // độ/giây
+const SWING_START = 240, SWING_END = 140;     // độ/giây
 const history = [];                           // { ts, up } – độ ngóc của đầu máy
 let phoneSwing = null;                        // { ts, peak, up0 }
 let lastPhoneSwingEnd = 0;
+// Độ trễ mạng: (giờ nhận − giờ trên điện thoại) nhỏ nhất gần đây là mức nền; tin đến muộn hơn mức đó bao nhiêu thì
+// cú vung thật ra đã bắt đầu sớm hơn bấy nhiêu, tính lùi lại để chấm nhịp công bằng.
+let lagFloor = Infinity;
 
 function onOrient(d) {
   const num = (v) => (Number.isFinite(+v) ? +v : 0);
@@ -505,6 +562,8 @@ function onOrient(d) {
   if (pendingCenter) { offset.copy(raw).invert(); pendingCenter = false; }
   rel.copy(offset).multiply(raw);
   const ts = Number.isFinite(+d.ts) ? +d.ts : performance.now();
+  const lag = performance.now() - ts;
+  lagFloor = Math.min(lagFloor + 0.05, lag);                  // nhích dần lên để theo kịp khi đồng hồ hai máy trôi
   const dt = (ts - prevTs) / 1000;
   const angle = 2 * Math.acos(Math.min(1, Math.abs(prevRel.dot(rel)))) / DEG;
   prevRel.copy(rel);
@@ -518,7 +577,8 @@ function onOrient(d) {
       const before = history.find((h) => ts - h.ts <= 140) || history[0];
       phoneSwing = { ts, peak: speed, up0: before ? before.up : top.z, upMax: top.z };
       // Báo cú vung ngay để tính đúng lúc; kiểu đánh chốt lúc bóng chạm vợt (peak đo tới lúc đó).
-      requestSwing("phone", { aim: 0, sw: phoneSwing });
+      const late = clamp((lag - lagFloor) / 1000, 0, 0.25);
+      requestSwing("phone", { aim: 0, sw: phoneSwing, at: game.t - late });
     }
   } else {
     phoneSwing.peak = Math.max(phoneSwing.peak, speed);
@@ -667,6 +727,7 @@ function simStep() {
     const hp = handPosition(srv);
     Object.assign(ball, { x: hp.x, y: 0.75 + Math.sin(game.t * 3) * 0.02, z: hp.z, vx: 0, vy: 0, vz: 0 });
     const auto = game.server === -1 || demo;
+    if (auto && game.t - game.stateAt > 1.3 - WIND_T) windUp(srv, 1, 0.75);
     if (auto && game.t - game.stateAt > 1.3) serveBall(srv, 0);
   } else if (st === "rally" || st === "point") {
     const ev = stepBall(ball);
@@ -678,66 +739,127 @@ function simStep() {
       const p = players[s];
       if (game.hitter === s) continue;
       if (!p.plan || p.plan.miss) p.plan = plan(p);                  // chưa với tới thì vừa chạy vừa tính lại
+      const pl = p.plan && !p.plan.letGo && !p.plan.miss ? p.plan : null;
+      const auto = s === -1 || demo;
+      // Máy lấy đà sẵn; người chơi lấy đà lúc vung. Tới lúc thì quét vợt để chạm bóng đúng giữa cú đánh.
+      if (auto && pl && game.t >= pl.t - IMPACT_LEAD - WIND_T) windUp(p, pl.fore ? 1 : -1, pl.y);
+      if (pl && p.anim.phase === "wind" && game.t >= pl.t - IMPACT_LEAD && (auto || swing)) strike(p, pl.fore ? 1 : -1, pl.y);
       if (s === 1 && !demo) playerContact(p); else aiContact(p);
     }
-    if (swing && game.t - swing.at > EARLY + LATE) swing = null;
+    if (swing) {
+      // Vung quá sớm (bóng còn xa) thì hụt ngay cho dễ hiểu; không thì hết cửa sổ mới tính là hụt.
+      const me = players[1], mpl = me.plan && !me.plan.letGo && !me.plan.miss ? me.plan : null;
+      const tooEarly = mpl && mpl.t - swing.at > EARLY && game.t - swing.at > WIND_T + 0.08;
+      if (tooEarly || game.t - swing.at > EARLY + lateLimit()) {
+        swing = null;
+        if (me.anim.phase === "wind") strike(me, me.anim.hand, me.anim.y);           // vung hụt
+      }
+    }
   }
   for (const s of [1, -1]) movePlayer(players[s], STEP);
-  if (game.state === "point" && game.t - game.stateAt > 1.8) {
+  if (game.state === "point" && game.t - game.stateAt > 2.2) {
     banner("");
     if (!checkGameOver()) setupServe();
   }
 }
 
-function animatePlayer(p, dt) {
+const easeOut = (u) => 1 - (1 - u) * (1 - u);
+const easeIn = (u) => u * u;
+const lerp = (a, b, u) => a + (b - a) * u;
+
+/** Góc vai và góc giơ tay theo hoạt cảnh vung hiện tại. */
+function swingPose(p) {
+  const a = p.anim, pose = POSE[a.hand];
+  const raise = armAngle(a.y);
+  if (a.phase === "wind") return { yaw: lerp(a.from, pose.back, easeOut(Math.min(1, (game.t - a.t0) / WIND_T))), arm: lerp(0.6, raise, 0.8), crouch: crouchFor(a.y) };
+  if (a.phase === "strike") {
+    const u = (game.t - a.t0) / STRIKE_T;
+    if (u < IMPACT_U) return { yaw: lerp(pose.back, pose.impact, easeIn(u / IMPACT_U)), arm: raise, crouch: crouchFor(a.y) };
+    if (u < 1) return { yaw: lerp(pose.impact, pose.follow, easeOut((u - IMPACT_U) / (1 - IMPACT_U))), arm: lerp(raise, 1.2, (u - IMPACT_U) / (1 - IMPACT_U)), crouch: crouchFor(a.y) };
+    const r = (u - 1) * STRIKE_T / RECOVER_T;
+    if (r < 1) return { yaw: lerp(pose.follow, POSE[1].ready, easeOut(r)), arm: lerp(1.2, 0.6, r), crouch: 0 };
+    a.phase = null;
+  }
+  return null;
+}
+
+function animatePlayer(p, x, z, dt) {
   const m = p.mesh;
-  m.group.position.set(p.x, 0, p.z);
+  m.group.position.set(x, 0, z);
   const sp = Math.hypot(p.vx, p.vz);
   p.runPhase += sp * dt * 3.2;
-  const swingK = sp > 0.3 ? Math.sin(p.runPhase) * Math.min(1, sp / 3) * 0.7 : 0;
-  m.legs[0].rotation.x = swingK; m.legs[1].rotation.x = -swingK;
-  m.hips.position.y = 0.9 - (sp > 0.3 ? Math.abs(Math.sin(p.runPhase)) * 0.04 : 0) - (game.state === "rally" ? 0.06 : 0);
-  m.leftArm.rotation.x = -swingK * 0.6;
-  // Vung vợt: 0 → 0.3 s
-  const u = (game.t - p.swingAt) / 0.3;
-  const hand = p.swingHand;
-  // Quay quanh vai: âm là vợt ra sau lưng, dương là vợt ra trước. Trái tay: vợt vắt sang trái rồi quét ra trước.
-  if (u >= 0 && u <= 1) {
-    const e = Math.sin(u * Math.PI / 2);
-    m.shoulder.rotation.y = hand > 0 ? -1.2 + e * 2.8 : 2.9 - e * 2.0;
-    m.arm.rotation.z = 0.9 + Math.sin(u * Math.PI) * 0.5;
+  const step = sp > 0.25 ? Math.sin(p.runPhase) * Math.min(1, sp / 3) * 0.7 : 0;
+  m.legs[0].rotation.x += (step - m.legs[0].rotation.x) * Math.min(1, dt * 20);
+  m.legs[1].rotation.x = -m.legs[0].rotation.x;
+  const k = Math.min(1, dt * 14);
+  const pose = swingPose(p);
+  if (pose) {
+    m.shoulder.rotation.y = pose.yaw;                           // hoạt cảnh tính sẵn theo thời gian, không làm mượt thêm
+    m.arm.rotation.z = pose.arm;
   } else {
-    const ready = p.plan && !p.plan.letGo && !p.plan.fore ? 2.3 : 0.4;
-    m.shoulder.rotation.y += (ready - m.shoulder.rotation.y) * Math.min(1, dt * 8);
-    m.arm.rotation.z += (0.6 - m.arm.rotation.z) * Math.min(1, dt * 8);
+    const ready = p.plan && !p.plan.letGo && !p.plan.miss && !p.plan.fore ? POSE[-1].ready : POSE[1].ready;
+    m.shoulder.rotation.y += (ready - m.shoulder.rotation.y) * k;
+    m.arm.rotation.z += (0.6 - m.arm.rotation.z) * k;
   }
-  // Nhìn theo bóng
-  const look = Math.atan2(ball.x - p.x, -(ball.z - p.z) * p.side) * 0.5;
-  m.group.rotation.y = (p.side === 1 ? 0 : Math.PI) - clamp(look, -0.7, 0.7) * p.side;
+  const bob = sp > 0.25 ? Math.abs(Math.sin(p.runPhase)) * 0.04 : 0;
+  const hipY = HIP_Y - bob - (game.state === "rally" ? 0.06 : 0) - (pose ? pose.crouch : 0);
+  m.hips.position.y += (hipY - m.hips.position.y) * Math.min(1, dt * 18);
+  m.leftArm.rotation.x = -m.legs[0].rotation.x * 0.6;
+  // Quay mặt theo bóng; sắp đánh thì quay thẳng về lưới cho vợt chạm đúng chỗ.
+  const pl = p.plan && !p.plan.letGo && !p.plan.miss ? p.plan : null;
+  const facing = pose || (pl && pl.t - game.t < 0.5) ? 0 : clamp(Math.atan2(ball.x - x, -(ball.z - z) * p.side) * 0.5, -0.7, 0.7);
+  p.face += (facing - p.face) * Math.min(1, dt * 8);
+  m.group.rotation.y = (p.side === 1 ? 0 : Math.PI) - p.face * p.side;
 }
 
 const camPos = new T.Vector3(0, 3.4, HALF_L + 5), camLook = new T.Vector3(0, 0.6, -6);
 function updateCamera(dt) {
   const me = players[1];
-  const k = Math.min(1, dt * 3);
+  const k = 1 - Math.exp(-dt * 3);                         // làm mượt không phụ thuộc số khung hình/giây
   const tight = camera.aspect < 1 ? 1.25 : 1;
-  camPos.lerp(new T.Vector3(me.x * 0.6, 4.0 * tight, me.z + 5.6 * tight), k);
-  camLook.lerp(new T.Vector3(me.x * 0.3, 0.3, me.z - 7), k);
+  camPos.lerp(new T.Vector3(me.rx * 0.6, 4.0 * tight, me.rz + 5.6 * tight), k);
+  camLook.lerp(new T.Vector3(me.rx * 0.3, 0.3, me.rz - 7), k);
   camera.position.copy(camPos); camera.lookAt(camLook);
 }
 
+/** Khung hình chậm (máy yếu, màn hình nét) thì hạ độ phân giải; nhanh lại thì nâng dần. */
+let perfTime = 0, perfFrames = 0, fastPeriods = 0;
+function adaptResolution(frameTime) {
+  perfTime += frameTime; perfFrames++;
+  if (perfTime < 1.5) return;
+  const avg = perfTime / perfFrames;
+  perfTime = 0; perfFrames = 0;
+  let next = pixelRatio;
+  if (avg > 0.022) { next = Math.max(0.6, pixelRatio - 0.2); fastPeriods = 0; }
+  else if (avg < 0.0175 && ++fastPeriods >= 3) { next = Math.min(MAX_RATIO, pixelRatio + 0.1); fastPeriods = 0; }
+  if (next !== pixelRatio) { pixelRatio = next; renderer.setPixelRatio(pixelRatio); resize(); }
+}
+
+// Vật lý chạy bước cố định 1/120 s; khi vẽ thì nội suy giữa hai bước để màn hình 60/75/90/144 Hz đều mượt.
+const prev = { bx: 0, by: 0, bz: 0, [1]: { x: 0, z: 0 }, [-1]: { x: 0, z: 0 } };
+function savePrev() {
+  prev.bx = ball.x; prev.by = ball.y; prev.bz = ball.z;
+  for (const s of [1, -1]) { prev[s].x = players[s].x; prev[s].z = players[s].z; }
+}
+const mix = (a, b, u) => (Math.abs(b - a) > 1.5 ? b : a + (b - a) * u);   // nhảy chỗ (giao bóng) thì khỏi nội suy
+
 let last = performance.now(), acc = 0;
 function frame(now) {
-  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  const frameTime = (now - last) / 1000;
+  const dt = Math.min(0.1, frameTime); last = now;
+  let u = 1;
   if (game.state !== "menu" && game.state !== "over") {
     acc += dt;
-    while (acc >= STEP) { simStep(); acc -= STEP; }
+    while (acc >= STEP) { savePrev(); simStep(); acc -= STEP; }
+    u = acc / STEP;
   }
+  const bx = mix(prev.bx, ball.x, u), by = mix(prev.by, ball.y, u), bz = mix(prev.bz, ball.z, u);
+  for (const s of [1, -1]) { const p = players[s]; p.rx = mix(prev[s].x, p.x, u); p.rz = mix(prev[s].z, p.z, u); }
   // Vẽ
-  ballMesh.position.set(ball.x, ball.y, ball.z);
-  blob.position.set(ball.x, 0.012, ball.z);
-  blob.material.opacity = clamp(0.4 - ball.y * 0.08, 0.12, 0.4);
-  if (game.state === "rally") { game.trail.push(ball.x, ball.y, ball.z); if (game.trail.length > TRAIL_N * 3) game.trail.splice(0, 3); }
+  ballMesh.position.set(bx, by, bz);
+  blob.position.set(bx, 0.012, bz);
+  blob.material.opacity = clamp(0.4 - by * 0.08, 0.12, 0.4);
+  if (game.state === "rally") { game.trail.push(bx, by, bz); if (game.trail.length > TRAIL_N * 3) game.trail.splice(0, 3); }
   const arr = trailGeo.attributes.position.array;
   for (let i = 0; i < TRAIL_N; i++) {
     const j = Math.max(0, game.trail.length - (TRAIL_N - i) * 3);
@@ -757,15 +879,32 @@ function frame(now) {
     else if (game.hitter === -1 && me.plan && !me.plan.letGo) hint(me.plan.n === 0 ? "Vô-lê!" : "");
     else if ($("hint").textContent && game.hitter === 1) hint("");
   }
-  for (const s of [1, -1]) animatePlayer(players[s], dt);
+  for (const s of [1, -1]) animatePlayer(players[s], players[s].rx, players[s].rz, dt);
   updateCamera(dt);
+  updateCue();
   renderer.render(scene, camera);
+  adaptResolution(frameTime);
   requestAnimationFrame(frame);
 }
 
+/** Vòng canh nhịp: bóng còn xa thì vòng to, co dần lại; khép vào chấm vàng (chuyển xanh) là lúc vung đẹp nhất. */
+function updateCue() {
+  const pl = players[1].plan;
+  const show = !demo && game.state === "rally" && game.hitter === -1 && pl && !pl.letGo && !pl.miss && !swing;
+  const left = show ? pl.t - LEAD - game.t : 0;                 // còn bao lâu tới lúc vung đẹp nhất
+  cue.visible = cueDot.visible = !!show && left < 0.8 && left > -0.15;
+  if (!cue.visible) return;
+  for (const o of [cue, cueDot]) { o.position.set(pl.x, pl.y, pl.z); o.quaternion.copy(camera.quaternion); }
+  cue.scale.setScalar(0.13 + Math.max(0, left) * 0.9);
+  const good = Math.abs(left) < 0.07;
+  cueMat.color.set(good ? 0x7ff0b8 : 0xffffff);
+  cueMat.opacity = 0.5 + 0.4 * (1 - Math.min(1, Math.max(0, left) / 0.8));
+}
+
 resize();
-for (const s of [1, -1]) { const p = players[s]; p.x = 0; p.z = s * (HALF_L - 0.5); }
+for (const s of [1, -1]) { const p = players[s]; p.x = p.rx = 0; p.z = p.rz = s * (HALF_L - 0.5); }
+savePrev();
 requestAnimationFrame(frame);
-if (params.has("debug")) window.__pb = { game, ball, players, requestSwing, startMatch, predict, phoneKind, onOrient };
+if (params.has("debug")) window.__pb = { game, ball, players, requestSwing, startMatch, predict, phoneKind, onOrient, IMPACT_LEAD };
 if (params.has("demo")) startMatch(true);
 })();

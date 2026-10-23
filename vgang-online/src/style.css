@@ -541,3 +541,101 @@ details.help summary {
   background: #fff;
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
 }
+
+/* Phone as handlebars: room code, QR code and how to hold it. */
+#phone-panel {
+  position: absolute;
+  top: calc(max(10px, env(safe-area-inset-top)) + 46px);
+  left: max(12px, env(safe-area-inset-left));
+  width: min(460px, calc(100% - 24px));
+  background: rgba(250, 247, 240, 0.97);
+  color: var(--ink);
+  border-radius: 14px;
+  padding: 12px 14px 14px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+  z-index: 12;
+}
+
+.phone-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.phone-head h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.phone-body {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: start;
+  margin-top: 8px;
+}
+
+.phone-code {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+#phone-qr {
+  background: #fff;
+  padding: 6px;
+  border-radius: 8px;
+  line-height: 0;
+}
+
+.phone-steps {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.phone-steps li {
+  margin-bottom: 4px;
+}
+
+.phone-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.phone-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#phone-panel .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #9aa0a6;
+  flex: none;
+}
+
+#phone-panel .dot.live {
+  background: #2fb380;
+  box-shadow: 0 0 0 4px rgba(47, 179, 128, 0.25);
+}
+
+#phone-panel .btn {
+  background: rgba(20, 28, 32, 0.08);
+  color: var(--ink);
+}
+
+@media (max-width: 520px) {
+  .phone-body {
+    grid-template-columns: 1fr;
+  }
+}

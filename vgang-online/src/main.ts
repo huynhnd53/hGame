@@ -9,7 +9,7 @@ requestAnimationFrame(() =>
       const game = new Game(canvas);
       game.start();
       document.getElementById('loading')?.remove();
-      if (import.meta.env.DEV) (window as unknown as { __vgang: Game }).__vgang = game;
+      if (import.meta.env.DEV || new URLSearchParams(location.search).has('debug')) (window as unknown as { __vgang: Game }).__vgang = game;
     } catch (err) {
       console.error(err);
       document.body.innerHTML =

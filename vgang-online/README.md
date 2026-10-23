@@ -29,6 +29,12 @@ Bản chơi: https://huynhnd53.github.io/hGame/vgang-online/
   L đèn pha, M tắt tiếng, V đổi góc nhìn. Kéo chuột để quay đầu nhìn quanh.
 - **Điện thoại:** kéo nửa trái màn hình như cần điều khiển: đẩy lên là ga, kéo xuống là phanh, sang hai bên là lái.
   Vuốt nửa phải để nhìn. Các nút Còi, xi nhan, Đèn, Đề ở góc phải. Nên xoay ngang.
+- **Điện thoại làm tay lái** (game chạy trên máy tính, dùng chung kết nối với các game trong `tiltpad/`): bấm nút
+  *Điện thoại*, quét mã QR. Điện thoại phải **xoay ngang** và **giữ thăng bằng** một giây mới bắt đầu lái (máy tự nổ,
+  bảng chọn xe tự đóng); dựng dọc lại là dừng nhận lệnh. Nghiêng điện thoại như vặn tay lái để rẽ (±35°), giữ nửa
+  phải màn hình điện thoại là ga, nửa trái là phanh; hàng nút trên: còi, xi nhan, đèn, bốc đầu, góc nhìn, đề máy và
+  "chọn game khác". Điện thoại hiện tốc độ và rung khi va chạm. Mở game với `?phone` để hiện mã ngay; đi từ trang chọn
+  game của tiltpad (`?room=`) thì điện thoại tự nối lại.
 - Có thể bấm thẳng vào công tắc trên ảnh tay lái: đèn, còi, xi nhan, nút đề ⚡.
 - Xi nhan tự tắt sau khi rẽ xong. Đứng yên giữ phanh để dắt lùi xe.
 
@@ -69,6 +75,10 @@ Cấu trúc:
   - `exhaust.ts` — tiếng bô từng xe: mỗi kỳ nổ là một xung vang theo cộng hưởng ống xả, vòng tua và số
     tính từ ga và tốc độ (tay ga giữ vòng tua, xe số/côn tay sang số).
 - `src/input/`, `src/ui/` — điều khiển bàn phím/chuột/cảm ứng và bản đồ nhỏ.
+  - `phone.ts` — lái bằng điện thoại: tải `../tiltpad/link.js` (WebRTC/MQTT) lúc cần, nhận `{t:"drive"}` (lái, ga,
+    phanh, bốc đầu), `{t:"ready"}`, `{t:"act"}` (còi, xi nhan…), gửi lại `{t:"hud"}` (tốc độ, máy, đèn, xi nhan) và
+    `{t:"buzz"}`. Không có tin quá 1 giây thì coi như buông tay. Khi `npm run dev`, Vite phục vụ `../tiltpad/public`
+    ở `/tiltpad/` để đường dẫn giống trên GitHub Pages.
 
 Game tự giảm độ phân giải khi khung hình tụt.
 

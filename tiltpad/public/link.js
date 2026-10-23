@@ -10,7 +10,9 @@
 
 const PREFIX = "hgame-tiltpad-";
 // Các trang dùng chung một phòng: chuyển game thì máy tính giữ mã cũ (?room=), điện thoại tự nối lại.
-const GAMES = { hub: "index.html", fruit: "fruit.html", pickle: "pickleball.html", cube: "cube.html" };
+const GAMES = { hub: "index.html", fruit: "fruit.html", pickle: "pickleball.html", cube: "cube.html", vgang: "../vgang-online/" };
+// Đường dẫn trong GAMES tính từ thư mục chứa link.js (trang Vgang nằm ở thư mục khác cũng dùng file này).
+const LINK_BASE = (document.currentScript && document.currentScript.src) || location.href;
 const ROOM_KEY = "tiltpad.room";               // tránh trùng ID với app khác trên máy chủ PeerJS chung
 const TOPIC = "hgame/tiltpad/v1/";             // gốc chủ đề MQTT, mỗi phòng một nhánh
 const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ";
@@ -186,7 +188,7 @@ function hostScreen({ game = "cube", onCode, onPads, onMessage: onAppMessage, on
   /** Sang trang game khác, giữ mã phòng; điện thoại được báo trước để tự nối lại. */
   function goTo(next) {
     if (!GAMES[next]) return;
-    const u = new URL(GAMES[next], location.href);
+    const u = new URL(GAMES[next], LINK_BASE);
     if (code) u.searchParams.set("room", code);
     for (const k of ["peer", "relay", "via", "debug"]) if (params.has(k)) u.searchParams.set(k, params.get(k));
     broadcast({ t: "switch", game: next });
@@ -319,7 +321,7 @@ function joinPad(code, { onOpen, onClosed, onError, onMessage = () => {} }) {
     send(msg) {
       if (mode === "p2p") { if (conn && conn.open) conn.send(msg); return; }
       if (mode !== "relay") return;
-      if (msg.t === "orient") {                  // gộp góc xoay, gửi bản mới nhất ~30 lần/giây
+      if (msg.t === "orient" || msg.t === "drive") {   // gộp góc xoay/tay lái, gửi bản mới nhất ~30 lần/giây
         pending = msg;
         if (!flushTimer) flushTimer = setTimeout(flush, RELAY_SEND_MS);
         return;

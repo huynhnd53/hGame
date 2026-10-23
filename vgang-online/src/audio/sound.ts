@@ -19,6 +19,11 @@ export class Sound {
   private horn: { oscs: OscillatorNode[]; gain: GainNode } | null = null;
   muted = false;
 
+  /** No user gesture has started audio yet (e.g. the page was opened from the phone). */
+  get locked(): boolean {
+    return !this.ctx || this.ctx.state !== 'running';
+  }
+
   unlock(): void {
     if (this.ctx) {
       if (this.ctx.state === 'suspended') void this.ctx.resume();

@@ -21,6 +21,35 @@
   #games button.on { border-color: var(--ball); }
   #pick { flex: 1; }
   #hubBtn { display: block; margin: .6rem auto 0; }
+  /* Tay lái Vgang: phủ kín màn hình, luôn bày theo chiều ngang (máy khoá xoay thì tự xoay giao diện). */
+  #drive { position: fixed; inset: 0; background: #11161c; color: #f2f4f7; z-index: 10; overflow: hidden; }
+  #driveRot { position: absolute; left: 50%; top: 50%; width: 100vw; height: 100vh; transform: translate(-50%, -50%);
+    display: grid; grid-template-rows: auto 1fr; padding: max(8px, env(safe-area-inset-top)) 10px 10px; gap: 8px; }
+  #driveRot.rot { width: 100vh; height: 100vw; }
+  .dtop { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; overflow-x: auto; }
+  .dtop button { flex: none; border: 2px solid #2c3640; border-radius: 12px; padding: .35rem .7rem; font-weight: 800; color: #f2f4f7; }
+  .dtop button.on { background: #ffc857; color: #1C1F4A; border-color: #ffc857; }
+  .dtop .spd { margin-left: auto; font-weight: 800; font-size: 1.6rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .dtop .spd small { font-size: .8rem; opacity: .7; }
+  .dmain { display: grid; grid-template-columns: 1fr 1.1fr 1fr; gap: 10px; min-height: 0; position: relative; }
+  .zone { border-radius: 22px; display: grid; place-items: center; font-weight: 800; font-size: 1.6rem; letter-spacing: .06em;
+    touch-action: none; user-select: none; -webkit-user-select: none; border: 3px solid transparent; }
+  #brakeZone { background: #3a1f25; color: #ff8a9b; } #brakeZone.on { background: #7a2333; border-color: #ff8a9b; }
+  #gasZone { background: #1d3a2c; color: #7ff0b8; } #gasZone.on { background: #1f6b47; border-color: #7ff0b8; }
+  .wheel { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; }
+  .wheel svg { width: min(100%, 220px); transition: transform .05s linear; }
+  .wheel .muted { color: #9aa3ad; font-size: .9rem; }
+  #gate { position: absolute; inset: 0; border-radius: 22px; background: rgba(17,22,28,.94); display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 12px; }
+  #gate h2 { margin: 0; font-size: 1.6rem; }
+  #gate p { margin: 0; color: #c7ced6; max-width: 520px; }
+  .level { position: relative; width: min(80%, 420px); height: 34px; border-radius: 999px; background: #1f2731; border: 2px solid #2c3640; }
+  .level::before { content: ""; position: absolute; left: 50%; top: 4px; bottom: 4px; width: 40px; margin-left: -20px; border-radius: 999px;
+    border: 2px dashed #7ff0b8; }
+  #lvlDot { position: absolute; top: 5px; width: 22px; height: 22px; margin-left: -11px; border-radius: 50%; background: #ffc857; left: 50%; }
+  #lvlDot.ok { background: #7ff0b8; }
+  #levelText { font-weight: 800; font-variant-numeric: tabular-nums; }
+  .rotate-icon { width: 90px; height: 90px; }
 </style>
 <div>
   <div class="top">
@@ -62,12 +91,53 @@
   <button class="ghost" id="hubBtn">Chọn game khác</button>
 </div>
 
+<div id="drive" hidden>
+  <div id="driveRot">
+    <div class="dtop">
+      <button id="dHub" aria-label="Chọn game khác">☰</button>
+      <button id="dLeft" aria-label="Xi nhan trái">◀</button>
+      <button id="dHorn">Còi</button>
+      <button id="dRight" aria-label="Xi nhan phải">▶</button>
+      <button id="dLight">Đèn</button>
+      <button id="dLift">Bốc</button>
+      <button id="dView">Nhìn</button>
+      <button id="dEngine">Đề</button>
+      <span class="spd"><span id="dKmh">0</span> <small>km/h</small></span>
+    </div>
+    <div class="dmain">
+      <div class="zone" id="brakeZone">PHANH</div>
+      <div class="wheel">
+        <svg id="bars" viewBox="0 0 220 80" aria-hidden="true">
+          <rect x="10" y="34" width="200" height="12" rx="6" fill="#c7ced6"/>
+          <rect x="4" y="28" width="44" height="24" rx="10" fill="#2c3640"/><rect x="172" y="28" width="44" height="24" rx="10" fill="#2c3640"/>
+          <circle cx="110" cy="40" r="20" fill="#ffc857"/>
+        </svg>
+        <span class="muted" id="dHint">Nghiêng điện thoại như vặn tay lái để rẽ</span>
+      </div>
+      <div class="zone" id="gasZone">GA</div>
+      <div id="gate">
+        <svg class="rotate-icon" id="gateIcon" viewBox="0 0 100 100" aria-hidden="true">
+          <rect x="30" y="12" width="40" height="70" rx="8" fill="none" stroke="#ffc857" stroke-width="5"/>
+          <path d="M20 70 A34 34 0 0 0 72 88" fill="none" stroke="#7ff0b8" stroke-width="5"/><path d="M72 88 l-12 2 l6 -10 z" fill="#7ff0b8"/>
+        </svg>
+        <h2 id="gateTitle">Xoay ngang điện thoại</h2>
+        <p id="gateText">Cầm điện thoại nằm ngang bằng hai tay như cầm tay lái xe máy.</p>
+        <div class="level" id="levelBox" hidden><div id="lvlDot"></div></div>
+        <span id="levelText"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 (() => {
 "use strict";
 const $ = id => document.getElementById(id);
 let link = null;
 let joined = false, code = "", game = "cube", rejoinUntil = 0, rejoinTimer = 0;
+// Tay lái Vgang (xem phần cuối): góc nghiêng tối đa, vùng chết, ngưỡng và thời gian giữ thăng bằng.
+const MAX_ROLL = 35, DEAD_ROLL = 2.5, LEVEL_DEG = 4, LEVEL_MS = 1000;
+const drv = { side: 0, roll: 0, ready: false, levelSince: 0, gas: false, brake: false, lift: false, rot: 0 };
 
 // Chữ theo game đang mở trên máy tính. Máy tính báo {t:"game"} khi điện thoại vào và {t:"switch"} khi chuyển game.
 const TEXTS = {
@@ -76,6 +146,7 @@ const TEXTS = {
     resetHint: "Giữ máy ở tư thế muốn làm “thẳng” rồi bấm." },
   fruit: { title: "Thanh kiếm", hint: "Cầm như điều khiển TV, đầu máy chĩa vào màn hình. Vung nhanh qua quả để chém.",
     reset: "CĂN GIỮA", resetHint: "Chĩa đầu máy vào giữa màn hình máy tính rồi bấm." },
+  vgang: { title: "Tay lái", hint: "" },
   pickle: { title: "Vợt pickleball", hint: "Cầm như cầm vợt, vung khi bóng tới: vung nhẹ bỏ nhỏ, vung mạnh đập, hất lên lốp.",
     reset: "CĂN GIỮA", resetHint: "Chĩa đầu máy vào màn hình máy tính rồi bấm." },
 };
@@ -92,8 +163,10 @@ function applyGame(g) {
 function layout() {
   $("joinBox").hidden = joined || rejoinUntil > Date.now();
   $("pick").hidden = !joined || game !== "hub";
-  $("live").hidden = !joined || game === "hub";
-  $("controls").hidden = !joined || game === "hub";
+  $("live").hidden = !joined || game === "hub" || game === "vgang";
+  $("controls").hidden = !joined || game === "hub" || game === "vgang";
+  $("drive").hidden = !joined || game !== "vgang";
+  if (game !== "vgang" || !joined) setReady(false);
 }
 
 const params = new URLSearchParams(location.search);
@@ -125,7 +198,7 @@ function connect() {
       joined = true; rejoinUntil = 0;
       $("joinErr").textContent = "";
       $("padState").textContent = "Phòng " + code + (mode === "relay" ? " · qua trung gian" : " · trực tiếp");
-      layout();
+      layout(); keepAwake();
       setTimeout(() => { if (!got && game !== "hub") $("joinErr").textContent = "Chưa nhận được dữ liệu cảm biến – kiểm tra lại HTTPS."; }, 2000);
     },
     onClosed() {
@@ -140,6 +213,7 @@ function connect() {
     onMessage(msg) {
       if (msg.t === "buzz" && navigator.vibrate) navigator.vibrate(Math.min(400, Number(msg.ms) || 30));
       if (msg.t === "game") applyGame(msg.game);
+      if (msg.t === "hud") showHud(msg);
       if (msg.t === "switch") { rejoinUntil = Date.now() + 30000; applyGame(msg.game); $("padState").textContent = "Đang chuyển game…"; }
     },
     onError(text) {
@@ -170,6 +244,7 @@ function onOrient(e){
   $("ra").textContent = e.alpha.toFixed(0) + "°";
   $("rb").textContent = e.beta.toFixed(0) + "°";
   $("rg").textContent = e.gamma.toFixed(0) + "°";
+  if (game === "vgang") { driveOrient(e); return; }
   if (!joined || game === "hub") return;
   const now = performance.now();
   if (now - lastSend < 16) return;              // ~60 lần/giây
@@ -180,7 +255,125 @@ function onOrient(e){
 }
 
 $("reset").onclick = () => { if (joined) { link.send({ t: "reset" }); if (navigator.vibrate) navigator.vibrate(30); } };
-if (params.has("debug")) window.__pad = { get game() { return game; }, get joined() { return joined; } };
+// ---------- Tay lái Vgang ----------
+// Lái bằng cách nghiêng điện thoại nằm ngang (như vặn tay lái); giữ nửa phải là ga, nửa trái là phanh.
+// Chỉ cho lái khi điện thoại nằm ngang và đã giữ thăng bằng 1 giây.
+
+/**
+ * Trục "lên" của thế giới viết theo trục điện thoại (hàng thứ ba của ma trận xoay Z·X·Y theo alpha/beta/gamma):
+ * x: mép phải (khi cầm dọc), y: đỉnh máy, z: mặt màn hình.
+ */
+function upInDevice(e) {
+  const b = e.beta * Math.PI / 180, g = e.gamma * Math.PI / 180;
+  return { x: -Math.cos(b) * Math.sin(g), y: Math.sin(b), z: Math.cos(b) * Math.cos(g) };
+}
+function uiAngle() {
+  let a = (screen.orientation && screen.orientation.angle) ?? (window.orientation || 0);
+  if (a > 180) a -= 360;
+  return a;
+}
+function driveOrient(e) {
+  const up = upInDevice(e);
+  const a = uiAngle();
+  // Bên nằm ngang: +1 là đỉnh máy quay sang trái, -1 là sang phải. Màn hình đã tự xoay thì theo nó; máy khoá xoay
+  // thì đoán theo trọng lực (đỉnh máy sang trái thì mép phải của máy chĩa lên trời), có quán tính để khỏi giật.
+  let side = drv.side;
+  if (a === 90) side = 1;
+  else if (a === -90) side = -1;
+  else if (Math.abs(up.y) > 0.6 && Math.abs(up.y) > Math.abs(up.x)) side = 0;              // đang cầm dọc
+  else if (Math.abs(up.x) > 0.5 && Math.sign(up.x) !== side) side = Math.sign(up.x);
+  drv.side = side;
+  // Mép phải (theo người cầm) nhô lên bao nhiêu: đỉnh máy sang trái thì mép phải là -y, sang phải thì là +y.
+  drv.roll = side ? Math.asin(Math.max(-1, Math.min(1, -side * up.y))) * 180 / Math.PI : 0;
+  drv.rot = a === 0 && side ? side * 90 : 0;                                              // xoay giao diện khi máy khoá xoay
+  updateGate();
+}
+function steerValue() {
+  const r = -drv.roll;                                       // mép phải nhô lên là rẽ trái
+  if (Math.abs(r) < DEAD_ROLL) return 0;
+  return Math.max(-1, Math.min(1, (r - Math.sign(r) * DEAD_ROLL) / (MAX_ROLL - DEAD_ROLL)));
+}
+function setReady(on) {
+  if (drv.ready === on) return;
+  drv.ready = on;
+  if (joined) link.send({ t: "ready", on });
+  if (on && navigator.vibrate) navigator.vibrate([40, 60, 40]);
+  if (!on) { drv.gas = drv.brake = drv.lift = false; for (const id of ["gasZone", "brakeZone", "dLift"]) $(id).classList.remove("on"); }
+}
+function updateGate() {
+  const r = $("driveRot");
+  r.classList.toggle("rot", drv.rot !== 0);
+  r.style.transform = "translate(-50%, -50%)" + (drv.rot ? ` rotate(${drv.rot}deg)` : "");
+  const now = performance.now();
+  if (!drv.side) { setReady(false); drv.levelSince = 0; }
+  else if (!drv.ready) {
+    if (Math.abs(drv.roll) < LEVEL_DEG) { drv.levelSince = drv.levelSince || now; if (now - drv.levelSince >= LEVEL_MS) setReady(true); }
+    else drv.levelSince = 0;
+  }
+  $("gate").hidden = drv.ready;
+  $("gateIcon").style.display = drv.side ? "none" : "";          // SVG không có thuộc tính hidden
+  $("levelBox").hidden = !drv.side;
+  $("gateTitle").textContent = drv.side ? "Giữ điện thoại thăng bằng" : "Xoay ngang điện thoại";
+  $("gateText").textContent = drv.side
+    ? "Cầm ngang bằng hai tay, giữ cho chấm vàng nằm giữa vạch xanh một giây để bắt đầu lái."
+    : "Cầm điện thoại nằm ngang bằng hai tay như cầm tay lái xe máy.";
+  const pos = 50 + Math.max(-45, Math.min(45, drv.roll * 1.5));
+  $("lvlDot").style.left = pos + "%";
+  const ok = drv.side && Math.abs(drv.roll) < LEVEL_DEG;
+  $("lvlDot").classList.toggle("ok", !!ok);
+  $("levelText").textContent = drv.side ? (ok && drv.levelSince ? "Giữ yên… " + Math.max(0, Math.ceil((LEVEL_MS - (now - drv.levelSince)) / 100) / 10).toFixed(1) + " s"
+    : "Nghiêng " + Math.abs(drv.roll).toFixed(0) + "°") : "";
+  $("bars").style.transform = `rotate(${(steerValue() * MAX_ROLL).toFixed(1)}deg)`;
+}
+// Gửi trạng thái tay lái khi có thay đổi (tối đa ~30 lần/giây), đứng yên thì 5 lần/giây cho máy tính biết vẫn còn
+// cầm (máy tính coi im lặng quá 1 giây là buông tay). Gửi ít đỡ nghẽn khi máy tính yếu hoặc đi qua trung gian.
+let lastDrive = "", lastDriveAt = 0;
+setInterval(() => {
+  if (!joined || game !== "vgang" || !drv.ready) return;
+  const now = performance.now();
+  const s = Math.round(steerValue() * 50) / 50;
+  const key = [s, drv.gas, drv.brake, drv.lift].join();
+  if (key === lastDrive && now - lastDriveAt < 200) return;
+  lastDrive = key; lastDriveAt = now;
+  link.send({ t: "drive", s, th: drv.gas ? 1 : 0, br: drv.brake ? 1 : 0, lift: drv.lift, ts: Math.round(now) });
+}, 33);
+function hold(id, key) {
+  const el = $(id);
+  const set = (on) => (e) => { e.preventDefault(); if (!drv.ready && on) return; drv[key] = on; el.classList.toggle("on", on); };
+  el.addEventListener("pointerdown", set(true));
+  for (const ev of ["pointerup", "pointercancel", "pointerleave"]) el.addEventListener(ev, set(false));
+}
+hold("gasZone", "gas"); hold("brakeZone", "brake"); hold("dLift", "lift");
+const act = (a) => { if (joined) link.send({ t: "act", a }); if (navigator.vibrate) navigator.vibrate(15); };
+$("dLeft").onclick = () => act("signal-left");
+$("dRight").onclick = () => act("signal-right");
+$("dLight").onclick = () => act("light");
+$("dView").onclick = () => act("view");
+$("dEngine").onclick = () => act("engine");
+$("dHub").onclick = () => { if (joined) link.send({ t: "pick", game: "hub" }); };
+$("dHorn").addEventListener("pointerdown", (e) => { e.preventDefault(); act("horn-down"); $("dHorn").classList.add("on"); });
+for (const ev of ["pointerup", "pointercancel", "pointerleave"]) $("dHorn").addEventListener(ev, () => {
+  if ($("dHorn").classList.contains("on")) { act("horn-up"); $("dHorn").classList.remove("on"); }
+});
+// Máy tính gửi tốc độ và trạng thái máy, đèn, xi nhan để hiện trên điện thoại.
+function showHud(m) {
+  $("dKmh").textContent = Math.round(Number(m.kmh) || 0);
+  $("dEngine").textContent = m.engine ? "Tắt" : "Đề";
+  $("dEngine").classList.toggle("on", !!m.engine);
+  $("dLight").classList.toggle("on", !!m.light);
+  $("dLeft").classList.toggle("on", m.signal === "left");
+  $("dRight").classList.toggle("on", m.signal === "right");
+  $("dHint").textContent = !m.engine ? "Bấm Đề để nổ máy" : "Nghiêng điện thoại như vặn tay lái để rẽ";
+}
+
+// Giữ màn hình điện thoại sáng khi đang chơi.
+let wakeLock = null;
+async function keepAwake() {
+  try { if (navigator.wakeLock && !wakeLock) { wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", () => { wakeLock = null; }); } } catch {}
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden && joined) keepAwake(); });
+
+if (params.has("debug")) window.__pad = { get game() { return game; }, get joined() { return joined; }, drv, driveOrient };
 })();
 </script>
 </body>

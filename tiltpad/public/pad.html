@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Tilt Pad – điện thoại</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"></script>
+<script src="link.js"></script>
+</head>
+<body class="pad">
+<div>
+  <div class="top">
+    <h1>Điện thoại</h1>
+    <span class="pill" id="padState">Chưa kết nối</span>
+  </div>
+  <div id="joinBox">
+    <p class="muted">Nhập mã đang hiện trên màn hình máy tính</p>
+    <div class="codein">
+      <input id="codeIn" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="ABCD">
+      <button class="primary" id="joinBtn">Kết nối</button>
+    </div>
+    <p class="muted hint" id="joinErr"></p>
+  </div>
+</div>
+
+<div id="live" hidden>
+  <div class="readout">
+    <div><span class="muted">alpha</span><b id="ra">0°</b></div>
+    <div><span class="muted">beta</span><b id="rb">0°</b></div>
+    <div><span class="muted">gamma</span><b id="rg">0°</b></div>
+  </div>
+  <p class="hint muted">Xoay điện thoại thế nào, khối trên máy tính xoay thế ấy.</p>
+</div>
+
+<div id="controls" hidden>
+  <button id="reset">ĐẶT LẠI GỐC</button>
+  <p class="hint muted">Giữ máy ở tư thế muốn làm “thẳng” rồi bấm.</p>
+</div>
+
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+let link = null;
+let joined = false;
+
+const pre = new URLSearchParams(location.search).get("c");
+if (pre) $("codeIn").value = pre.toUpperCase();
+$("joinBtn").onclick = join;
+$("codeIn").addEventListener("keydown", e => { if (e.key === "Enter") join(); });
+
+async function join(){
+  const code = $("codeIn").value.trim().toUpperCase();
+  $("joinErr").textContent = "";
+  if (!/^[A-Z]{4}$/.test(code)) { $("joinErr").textContent = "Mã gồm 4 chữ cái."; return; }
+  $("joinBtn").disabled = true;
+
+  // iOS 13+: xin quyền ngay trong thao tác chạm, và chỉ hoạt động trên HTTPS
+  const ok = await askMotionPermission();
+  if (!ok) { $("joinErr").textContent = "Không được cấp quyền cảm biến. Cần mở trang qua HTTPS và bấm Cho phép."; $("joinBtn").disabled = false; return; }
+
+  link = TiltLink.joinPad(code, {
+    onOpen() {
+      joined = true;
+      $("padState").textContent = "Phòng " + code;
+      $("joinBox").hidden = true; $("live").hidden = false; $("controls").hidden = false;
+      setTimeout(() => { if (!got) $("joinErr").textContent = "Chưa nhận được dữ liệu cảm biến – kiểm tra lại HTTPS."; }, 2000);
+    },
+    onClosed() { joined = false; $("padState").textContent = "Màn hình đã đóng"; },
+    onError(text) { $("joinErr").textContent = text; $("joinBtn").disabled = false; },
+  });
+}
+
+async function askMotionPermission(){
+  try {
+    if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
+      if ((await DeviceOrientationEvent.requestPermission()) !== "granted") return false;
+    }
+  } catch (e) { return false; }
+  addEventListener("deviceorientation", onOrient, true);
+  return true;
+}
+
+let got = false, lastSend = 0;
+function onOrient(e){
+  if (e.alpha == null || e.beta == null || e.gamma == null) return;
+  got = true;
+  $("ra").textContent = e.alpha.toFixed(0) + "°";
+  $("rb").textContent = e.beta.toFixed(0) + "°";
+  $("rg").textContent = e.gamma.toFixed(0) + "°";
+  if (!joined) return;
+  const now = performance.now();
+  if (now - lastSend < 16) return;              // ~60 lần/giây
+  lastSend = now;
+  const o = (screen.orientation && screen.orientation.angle) ?? (window.orientation || 0);
+  link.send({ t: "orient", a: +e.alpha.toFixed(2), b: +e.beta.toFixed(2), g: +e.gamma.toFixed(2), o });
+}
+
+$("reset").onclick = () => { if (joined) { link.send({ t: "reset" }); if (navigator.vibrate) navigator.vibrate(30); } };
+})();
+</script>
+</body>
+</html>

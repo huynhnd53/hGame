@@ -1,0 +1,8 @@
+# Deploy một chạm lên Render: New → Blueprint → chọn repo này
+services:
+  - type: web
+    name: tiltpad
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    plan: free

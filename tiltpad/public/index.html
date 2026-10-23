@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tilt Pad – màn hình máy tính</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"></script>
+<script src="link.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body class="game">
+<div class="wrap">
+  <div id="stage"><canvas id="board" aria-label="Khối 3D"></canvas></div>
+  <aside id="side">
+    <div class="card">
+      <p class="muted">Quét mã hoặc mở <b id="padUrl"></b> trên điện thoại và nhập</p>
+      <div class="code" id="codeOut">····</div>
+      <div id="qr"></div>
+      <div class="status"><span class="dot" id="padDot"></span><span id="padText">Đang chờ điện thoại…</span></div>
+    </div>
+    <div class="card readout">
+      <div><span class="muted">alpha</span><b id="ra">–</b></div>
+      <div><span class="muted">beta</span><b id="rb">–</b></div>
+      <div><span class="muted">gamma</span><b id="rg">–</b></div>
+    </div>
+    <div class="card">
+      <p class="muted">Chưa có điện thoại? Kéo chuột trên khối để xoay thử.</p>
+      <button class="ghost" id="resetBtn">Đặt lại gốc</button>
+    </div>
+  </aside>
+</div>
+
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+
+// ---------- Kết nối với điện thoại (WebRTC, xem link.js) ----------
+let target = new THREE.Quaternion();     // tư thế đích (đã trừ gốc)
+let raw = new THREE.Quaternion();        // tư thế thô từ điện thoại
+let offset = new THREE.Quaternion();     // gốc "thẳng"
+let havePad = false, pendingReset = false;
+
+// Trang điện thoại nằm cạnh trang này; ?peer=… (máy chủ ghép cặp riêng) được chuyển theo.
+const padUrl = (code) => {
+  const u = new URL("pad.html", location.href);
+  const peer = new URLSearchParams(location.search).get("peer");
+  if (code) u.searchParams.set("c", code);
+  if (peer) u.searchParams.set("peer", peer);
+  return u;
+};
+$("padUrl").textContent = padUrl().host + padUrl().pathname;
+
+TiltLink.hostScreen({
+  onCode(code) {
+    $("codeOut").textContent = code;
+    $("qr").innerHTML = "";
+    new QRCode($("qr"), { text: padUrl(code).href, width: 140, height: 140, correctLevel: QRCode.CorrectLevel.M });
+  },
+  onPads(n) {
+    havePad = n > 0;
+    $("padDot").classList.toggle("live", havePad);
+    $("padText").textContent = !havePad ? "Đang chờ điện thoại…" : n === 1 ? "Điện thoại đã kết nối" : n + " điện thoại đang kết nối";
+  },
+  onMessage(d) {
+    if (d.t === "reset") { pendingReset = true; return; }
+    if (d.t !== "orient") return;
+    const num = (v) => (Number.isFinite(+v) ? +v : 0);
+    const a = num(d.a), b = num(d.b), g = num(d.g), o = num(d.o);
+    $("ra").textContent = a.toFixed(0) + "°"; $("rb").textContent = b.toFixed(0) + "°"; $("rg").textContent = g.toFixed(0) + "°";
+    deviceToQuaternion(raw, a, b, g, o);
+    if (pendingReset) { offset.copy(raw).invert(); pendingReset = false; }
+    target.copy(offset).multiply(raw);
+  },
+  onError(err) {
+    $("padText").textContent = "Không mở được phòng (" + (err.type || err.message) + "). Tải lại trang để thử lại.";
+  },
+});
+$("resetBtn").onclick = () => { pendingReset = true; };
+
+// ---------- DeviceOrientation (độ) → quaternion ----------
+// Cùng công thức với DeviceOrientationControls của three.js:
+// hệ trục của khối = hệ trục điện thoại (X sang phải, Y lên đỉnh máy, Z chĩa ra khỏi màn hình).
+const DEG = Math.PI / 180;
+const zee = new THREE.Vector3(0, 0, 1);
+const euler = new THREE.Euler();
+const q0 = new THREE.Quaternion();
+const q1 = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5)); // -90° quanh X
+function deviceToQuaternion(q, alpha, beta, gamma, orient) {
+  euler.set(beta * DEG, alpha * DEG, -gamma * DEG, "YXZ");
+  q.setFromEuler(euler);
+  q.multiply(q1);
+  q.multiply(q0.setFromAxisAngle(zee, -orient * DEG));
+}
+
+// ---------- Three.js ----------
+const canvas = $("board");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+camera.position.set(0, 0, 7.5);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+const key = new THREE.DirectionalLight(0xffffff, 0.9); key.position.set(3, 5, 6); scene.add(key);
+const rim = new THREE.DirectionalLight(0x8fa3ff, 0.5); rim.position.set(-4, -2, -3); scene.add(rim);
+
+// Khối hình điện thoại: mỗi mặt một màu để nhìn rõ chiều xoay
+const colors = [0xFF6B8A, 0x5ED6B5, 0xFFC857, 0x6C7BFF, 0xF2F0FF, 0x2A2E6E]; // +X -X +Y -Y +Z(màn hình) -Z(lưng)
+const mats = colors.map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.45, metalness: 0.1 }));
+const body = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.8, 0.18), mats);
+// "màn hình" tối + nốt camera để biết đâu là mặt trước / đỉnh máy
+const screenMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 2.5), new THREE.MeshStandardMaterial({ color: 0x0D0F26, roughness: 0.2 }));
+screenMesh.position.z = 0.091; body.add(screenMesh);
+const cam = new THREE.Mesh(new THREE.CircleGeometry(0.07, 24), new THREE.MeshStandardMaterial({ color: 0x5ED6B5 }));
+cam.position.set(0, 1.3, 0.092); body.add(cam);
+const axes = new THREE.AxesHelper(2.2); body.add(axes);
+scene.add(body);
+
+// Lưới sàn để có cảm giác không gian
+const grid = new THREE.GridHelper(12, 24, 0x2A2E6E, 0x2A2E6E);
+grid.position.y = -2.2; scene.add(grid);
+
+// Kéo chuột để xoay thử khi chưa có điện thoại
+let drag = null;
+canvas.addEventListener("pointerdown", e => { drag = { x: e.clientX, y: e.clientY }; });
+addEventListener("pointerup", () => { drag = null; });
+addEventListener("pointermove", e => {
+  if (!drag || havePad) return;
+  const dx = (e.clientX - drag.x) * 0.01, dy = (e.clientY - drag.y) * 0.01; drag = { x: e.clientX, y: e.clientY };
+  const dq = new THREE.Quaternion().setFromEuler(new THREE.Euler(dy, dx, 0, "XYZ"));
+  target.premultiply(dq);
+});
+
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (canvas.width !== w * renderer.getPixelRatio() || canvas.height !== h * renderer.getPixelRatio()) {
+    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  }
+}
+function loop() {
+  resize();
+  body.quaternion.slerp(target, 0.35);   // làm mượt nhẹ, vẫn bám sát
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+loop();
+if (new URLSearchParams(location.search).has("debug")) window.__tilt = { target, body };
+})();
+</script>
+</body>
+</html>

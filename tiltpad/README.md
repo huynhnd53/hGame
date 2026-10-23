@@ -8,6 +8,7 @@ từ đó chọn game trên máy tính hoặc ngay trên điện thoại. Đổi
 | `index.html` | Giới thiệu, kết nối, chọn game |
 | `fruit.html` | Chém hoa quả: điện thoại là thanh kiếm |
 | `pickleball.html` | Pickleball góc nhìn thứ ba: điện thoại là vợt |
+| `pickleball-fp.html` | Pickleball góc nhìn thứ nhất: vợt xoay theo tay, nhận động tác vụt, smash, dink |
 | `cube.html` | Khối 3D (hình điện thoại) xoay theo điện thoại |
 | `check.html` | Kiểm tra kết nối |
 
@@ -80,6 +81,31 @@ https://huynhnd53.github.io/hGame/tiltpad/pickleball.html
 
 Vật lý chạy bước cố định 1/120 s (trọng lực, nảy mất ~38% vận tốc đứng). Cả người và máy dùng chung một hàm mô phỏng
 trước đường bóng để tìm điểm đỡ nên dự đoán khớp tuyệt đối. Phần game nằm trong `public/pickleball.js`.
+
+## Game: Pickleball góc nhìn thứ nhất (`pickleball-fp.html`)
+
+https://huynhnd53.github.io/hGame/tiltpad/pickleball-fp.html – tách từ bản góc nhìn thứ ba (`pickleball-fp.js`), cùng
+luật, cùng máy, cùng vòng canh nhịp. Khác:
+
+- Camera ở mắt người chơi (1,55 m), quay đầu một phần theo bóng; không thấy thân mình. Bóng tới trước mặt, chếch phải
+  (thuận tay) hoặc trái (trái tay), cách mắt 0,85 m nên luôn nhìn thấy lúc chạm.
+- Cây vợt ở góc dưới **xoay đúng theo điện thoại** (quaternion điện thoại sau khi căn giữa, nhân với tư thế gốc của vợt).
+  Không có điện thoại thì vợt chạy hoạt cảnh theo kiểu đánh.
+- **Nhận động tác** từ đường đi của đầu vợt (trục đỉnh máy) trong cú vung: góc ngóc lên/chúc xuống so với ~0,12 s
+  trước cú vung, góc quét ngang và tốc độ xoay cao nhất:
+
+  | Động tác | Nhận khi | Bóng đi |
+  | --- | --- | --- |
+  | Dink | tốc độ cao nhất dưới ~420°/s | bổng (xoáy ngược), rơi vào vùng cấm |
+  | Smash | vợt đang giơ cao (> 12°) rồi chúc xuống > 30°, nhiều hơn quét ngang | nhanh, cắm xuống; bóng thấp hơn 1,05 m thì vào lưới |
+  | Vụt từ dưới lên | đầu vợt đi lên > 25°, nhiều hơn quét ngang | xoáy lên: nhanh, qua lưới cao rồi cắm xuống; bóng đã cao thì thành lốp |
+  | Lốp | đi lên > 70° mà chậm hơn ~750°/s | vồng qua đầu, rơi cuối sân |
+  | Đánh thẳng / đánh mạnh | còn lại (vung ngang), nhanh hơn ~950°/s là đánh mạnh | thẳng, không xoáy |
+
+  Góc dưới bên phải hiện động tác vừa nhận (kèm tốc độ, góc lên/xuống, Đẹp/Sớm/Muộn), cả khi vung hụt, để tập.
+- Xoáy làm đổi trọng lực hiệu dụng của quả bóng (xoáy lên +3,5 m/s², dink −1,2 m/s²); máy giải đường bay và đoán điểm
+  rơi với đúng trọng lực đó nên vẫn khớp tuyệt đối.
+- Bàn phím: `Space`/chuột vụt, `C` smash (chuột phải), `Z` dink (Shift + chuột), `X` lốp, `V` đánh thẳng.
 
 ## Vgang Online: điện thoại làm tay lái (`pad.html?game=vgang`)
 

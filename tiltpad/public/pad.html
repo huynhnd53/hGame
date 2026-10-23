@@ -6,6 +6,7 @@
 <title>Tilt Pad – điện thoại</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.4/dist/mqtt.min.js"></script>
 <script src="link.js"></script>
 </head>
 <body class="pad">
@@ -68,10 +69,12 @@ async function join(){
   const ok = await askMotionPermission();
   if (!ok) { $("joinErr").textContent = "Không được cấp quyền cảm biến. Cần mở trang qua HTTPS và bấm Cho phép."; $("joinBtn").disabled = false; return; }
 
+  $("joinErr").textContent = "Đang kết nối…";
   link = TiltLink.joinPad(code, {
-    onOpen() {
+    onOpen(mode) {
       joined = true;
-      $("padState").textContent = "Phòng " + code;
+      $("joinErr").textContent = "";
+      $("padState").textContent = "Phòng " + code + (mode === "relay" ? " · qua trung gian" : " · trực tiếp");
       $("joinBox").hidden = true; $("live").hidden = false; $("controls").hidden = false;
       setTimeout(() => { if (!got) $("joinErr").textContent = "Chưa nhận được dữ liệu cảm biến – kiểm tra lại HTTPS."; }, 2000);
     },

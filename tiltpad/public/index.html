@@ -6,6 +6,7 @@
 <title>Tilt Pad – màn hình máy tính</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.4/dist/mqtt.min.js"></script>
 <script src="link.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -43,12 +44,12 @@ let raw = new THREE.Quaternion();        // tư thế thô từ điện thoại
 let offset = new THREE.Quaternion();     // gốc "thẳng"
 let havePad = false, pendingReset = false;
 
-// Trang điện thoại nằm cạnh trang này; ?peer=… (máy chủ ghép cặp riêng) được chuyển theo.
+// Trang điện thoại nằm cạnh trang này; ?peer= ?relay= ?via= (chọn máy chủ / đường kết nối) được chuyển theo.
 const padUrl = (code) => {
   const u = new URL("pad.html", location.href);
-  const peer = new URLSearchParams(location.search).get("peer");
+  const params = new URLSearchParams(location.search);
   if (code) u.searchParams.set("c", code);
-  if (peer) u.searchParams.set("peer", peer);
+  for (const k of ["peer", "relay", "via"]) if (params.get(k)) u.searchParams.set(k, params.get(k));
   return u;
 };
 $("padUrl").textContent = padUrl().host + padUrl().pathname;
@@ -59,10 +60,11 @@ TiltLink.hostScreen({
     $("qr").innerHTML = "";
     new QRCode($("qr"), { text: padUrl(code).href, width: 140, height: 140, correctLevel: QRCode.CorrectLevel.M });
   },
-  onPads(n) {
+  onPads(n, { relay }) {
     havePad = n > 0;
     $("padDot").classList.toggle("live", havePad);
-    $("padText").textContent = !havePad ? "Đang chờ điện thoại…" : n === 1 ? "Điện thoại đã kết nối" : n + " điện thoại đang kết nối";
+    $("padText").textContent = (!havePad ? "Đang chờ điện thoại…" : n === 1 ? "Điện thoại đã kết nối" : n + " điện thoại đang kết nối")
+      + (relay ? " (qua máy chủ trung gian)" : "");
   },
   onMessage(d) {
     if (d.t === "reset") { pendingReset = true; return; }

@@ -89,7 +89,7 @@ const AIM_RANGE = 28;
 const raw = new T.Quaternion();
 const offset = new T.Quaternion();
 let pendingCenter = true;
-let phoneCount = 0;
+let phoneCount = 0, relayCount = 0;
 
 /**
  * Hướng đầu máy so với lúc căn giữa → vị trí trên màn hình. Lúc căn giữa đầu máy (trục Y của điện thoại) chĩa
@@ -110,8 +110,7 @@ const padUrl = (code) => {
   const u = new URL("pad.html", location.href);
   if (code) u.searchParams.set("c", code);
   u.searchParams.set("game", "fruit");
-  const peer = params.get("peer");
-  if (peer) u.searchParams.set("peer", peer);
+  for (const k of ["peer", "relay", "via"]) if (params.get(k)) u.searchParams.set(k, params.get(k));
   return u;
 };
 $("padUrl").textContent = padUrl().host + padUrl().pathname;
@@ -123,8 +122,8 @@ const link = TiltLink.hostScreen({
     new QRCode($("qr"), { text: padUrl(code).href, width: 132, height: 132, correctLevel: QRCode.CorrectLevel.M });
     setPadText();
   },
-  onPads(n) {
-    phoneCount = n;
+  onPads(n, { relay }) {
+    phoneCount = n; relayCount = relay;
     if (n > 0) pendingCenter = true;
     setPadText();
   },
@@ -143,7 +142,7 @@ function setPadText() {
   $("padDot").classList.toggle("live", phoneCount > 0);
   const code = $("codeOut").textContent;
   $("padText").textContent = phoneCount > 0
-    ? (phoneCount === 1 ? "Điện thoại đã kết nối" : phoneCount + " điện thoại") + " · phòng " + code
+    ? (phoneCount === 1 ? "Điện thoại đã kết nối" : phoneCount + " điện thoại") + (relayCount ? " qua trung gian" : "") + " · phòng " + code
     : "Chưa có điện thoại · đang chơi bằng chuột · phòng " + code;
 }
 const buzz = (ms) => link.broadcast({ t: "buzz", ms });

@@ -1,10 +1,10 @@
 /// <reference types="node" />
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
-import { areaM2, boxFromCorners, clipPolyline, LocalProjection, type LonLat, pointInRing, samplePoints, type XZ } from '../newmap/src/geo';
-import { mergeFootprints, MIN_CONFIDENCE, Occupancy } from '../newmap/src/merge';
-import { guessLevels, osmBuilding, osmToScene, parseLength, roadWidth, type SceneModel } from '../newmap/src/model';
-import { iso3, placeName } from '../newmap/src/nominatim';
+import { areaM2, boxFromCorners, clipPolyline, LocalProjection, type LonLat, pointInRing, samplePoints, type XZ } from '../src/geo';
+import { mergeFootprints, MIN_CONFIDENCE, Occupancy } from '../src/merge';
+import { guessLevels, osmBuilding, osmToScene, parseLength, roadWidth, type SceneModel } from '../src/model';
+import { iso3, placeName } from '../src/nominatim';
 import {
   countryFileUrl,
   type Footprint,
@@ -12,7 +12,7 @@ import {
   readFootprints,
   tilesForArea,
   tilesPrefix,
-} from '../newmap/src/openBuildings';
+} from '../src/openBuildings';
 import {
   assembleRings,
   buildQuery,
@@ -21,17 +21,17 @@ import {
   type OverpassJson,
   parseOverpass,
   raceOverpass,
-} from '../newmap/src/overpass';
-import { buildArea } from '../newmap/src/pipeline';
-import { cellContains, cellLevel, leafCellId, parseCellId } from '../newmap/src/s2';
+} from '../src/overpass';
+import { buildArea } from '../src/pipeline';
+import { cellContains, cellLevel, leafCellId, parseCellId } from '../src/s2';
 import * as THREE from 'three';
-import { MAX_POLAR, MIN_DISTANCE, orientedBox, parseOsmColour, roofStyle, turnCamera, viewAngles } from '../newmap/src/scene3d';
-import { makeTrees, offsetPointsAlong } from '../newmap/src/decor';
-import { compassName, compassShort, localToUtc, sunPosition, zoneOffsetHours } from '../newmap/src/sun';
-import { pointsAlong } from '../newmap/src/model';
-import { searchPlaces } from '../newmap/src/nominatim';
-import { filterPlaces, groupOf, listPlaces } from '../newmap/src/places';
-import { clampSplit } from '../newmap/src/split';
+import { MAX_POLAR, MIN_DISTANCE, orientedBox, parseOsmColour, roofStyle, turnCamera, viewAngles } from '../src/scene3d';
+import { makeTrees, offsetPointsAlong } from '../src/decor';
+import { compassName, compassShort, localToUtc, sunPosition, zoneOffsetHours } from '../src/sun';
+import { pointsAlong } from '../src/model';
+import { searchPlaces } from '../src/nominatim';
+import { filterPlaces, groupOf, listPlaces } from '../src/places';
+import { clampSplit } from '../src/split';
 
 const HANOI: LonLat = [105.8262, 21.0042];
 

@@ -2,76 +2,85 @@
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
-    <meta name="theme-color" content="#1f2a30" />
-    <title>Vgang Online</title>
-    <link rel="stylesheet" href="./src/style.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#121417" />
+    <title>hGame</title>
+    <style>
+      :root {
+        --bg: #121417;
+        --card: #1b1e22;
+        --line: rgba(255, 255, 255, 0.1);
+        --ink: #eceae6;
+        --muted: #9aa0a6;
+        --accent: #e8734a;
+        color-scheme: dark;
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--ink);
+        display: grid;
+        place-content: center;
+        padding: 32px 16px;
+      }
+      h1 {
+        margin: 0 0 6px;
+        font-size: 28px;
+      }
+      .lead {
+        margin: 0 0 24px;
+        color: var(--muted);
+      }
+      .apps {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 14px;
+        max-width: 720px;
+      }
+      a.app {
+        display: block;
+        padding: 18px 20px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--card);
+        color: inherit;
+        text-decoration: none;
+      }
+      a.app:hover,
+      a.app:focus-visible {
+        border-color: var(--accent);
+      }
+      a.app h2 {
+        margin: 0 0 6px;
+        font-size: 18px;
+      }
+      a.app p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.45;
+      }
+    </style>
   </head>
   <body>
-    <div id="app">
-      <canvas id="scene"></canvas>
-      <div id="loading">Đang dựng phố đêm…</div>
-      <div id="cockpit-layer"></div>
-      <canvas id="mini-gauge" aria-hidden="true"></canvas>
-
-      <div id="hud">
-        <div class="hud-left">
-          <div class="chip" id="place">Dạo phố</div>
-          <button class="btn" id="btn-mute" type="button">Âm thanh: bật</button>
-          <button class="btn" id="btn-help" type="button">Đổi xe</button>
-          <button class="btn" id="btn-view" type="button">Nhìn: sau xe</button>
-        </div>
-        <canvas id="minimap" width="150" height="150" aria-label="Bản đồ"></canvas>
+    <main>
+      <h1>hGame</h1>
+      <p class="lead">Các dự án trong repo này.</p>
+      <div class="apps">
+        <a class="app" href="./vgang-online/">
+          <h2>Vgang Online</h2>
+          <p>Game 3D lái xe máy dạo phố về đêm, nhìn từ góc người lái.</p>
+        </a>
+        <a class="app" href="./newmap/">
+          <h2>Dựng khu thật</h2>
+          <p>Vẽ một khu trên bản đồ, dựng thành mô hình 3D từ OpenStreetMap và Open Buildings.</p>
+        </a>
       </div>
-
-      <div id="prompt" class="hidden"></div>
-      <div id="wheelie" class="hidden" aria-live="polite">
-        <div id="wheelie-text"></div>
-        <div class="wheelie-bar"><div class="wheelie-zone"></div><div class="wheelie-mark"></div></div>
-      </div>
-      <div id="toasts"></div>
-
-      <div id="touch" class="hidden">
-        <div id="joystick"><div id="joystick-knob"></div></div>
-        <div class="touch-buttons">
-          <button class="tbtn" id="t-signal-left" type="button" aria-label="Xi nhan trái">◀</button>
-          <button class="tbtn" id="t-horn" type="button">Còi</button>
-          <button class="tbtn" id="t-signal-right" type="button" aria-label="Xi nhan phải">▶</button>
-          <button class="tbtn" id="t-light" type="button">Đèn</button>
-          <button class="tbtn" id="t-wheelie" type="button" aria-label="Bốc đầu (giữ)">Bốc</button>
-          <button class="tbtn primary" id="t-engine" type="button">Đề</button>
-        </div>
-      </div>
-
-      <div id="rotate-hint" class="hidden">
-        <span>Xoay ngang điện thoại để lái thoải mái hơn</span>
-        <button class="btn" id="rotate-dismiss" type="button">Vẫn chơi dọc</button>
-      </div>
-
-      <div id="panel" role="dialog" aria-modal="true" aria-labelledby="panel-title">
-        <div class="panel-card">
-          <div class="panel-head">
-            <h2 id="panel-title">Chọn xe</h2>
-            <p class="panel-hint">Bấm vào xe để nghe tiếng bô.</p>
-          </div>
-          <div id="bike-picker" class="gauge-grid" role="radiogroup" aria-labelledby="panel-title"></div>
-          <details class="help">
-            <summary>Cách chơi</summary>
-            <ul class="help-list">
-              <li>Nổ máy rồi thong thả chạy quanh phố. Không có điểm số, không có thời gian.</li>
-              <li><b>Máy tính:</b> W/↑ ga, S/↓/Space phanh, A D hoặc ← → lái. K nổ máy, H bóp còi, Q E xi nhan, L bật đèn, M tắt tiếng, V đổi góc nhìn (tay lái / sau xe). Kéo chuột để quay đầu nhìn.</li>
-              <li><b>Điện thoại:</b> kéo nửa trái màn hình: đẩy lên là ga, kéo xuống là phanh, sang hai bên là lái. Vuốt nửa phải để nhìn quanh.</li>
-              <li>Có thể bấm thẳng vào nút trên tay lái: còi, đèn, xi nhan và nút đề.</li>
-              <li><b>Bốc đầu:</b> khi đang chạy chậm, giữ <kbd>Shift</kbd> (hoặc <kbd>B</kbd>, hay nút <b>Bốc</b>) rồi vít ga để nhấc đầu xe. Khi lên tới vùng xanh thì thả Shift, nhấp nhả ga để giữ thăng bằng; ngửa quá thì bóp phanh để hạ đầu, không là lật xe. Côn tay dễ bốc nhất, tay ga khó nhất.</li>
-              <li>Xe đã chọn, quãng đường và vị trí được lưu trên trình duyệt này.</li>
-            </ul>
-          </details>
-          <div class="panel-foot">
-            <button class="btn primary" id="panel-close" type="button">Lên xe</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    <script type="module" src="./src/main.ts"></script>
+    </main>
   </body>
 </html>

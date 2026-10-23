@@ -4,8 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Tilt Pad – điện thoại</title>
-<link rel="stylesheet" href="/style.css">
-<script src="/socket.io/socket.io.js"></script>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"></script>
+<script src="link.js"></script>
 </head>
 <body class="pad">
 <div>
@@ -41,7 +42,7 @@
 (() => {
 "use strict";
 const $ = id => document.getElementById(id);
-const socket = io();
+let link = null;
 let joined = false;
 
 const pre = new URLSearchParams(location.search).get("c");
@@ -59,12 +60,15 @@ async function join(){
   const ok = await askMotionPermission();
   if (!ok) { $("joinErr").textContent = "Không được cấp quyền cảm biến. Cần mở trang qua HTTPS và bấm Cho phép."; $("joinBtn").disabled = false; return; }
 
-  socket.emit("pad:join", code, (res) => {
-    if (res.error) { $("joinErr").textContent = res.error; $("joinBtn").disabled = false; return; }
-    joined = true;
-    $("padState").textContent = "Phòng " + code;
-    $("joinBox").hidden = true; $("live").hidden = false; $("controls").hidden = false;
-    setTimeout(() => { if (!got) $("joinErr").textContent = "Chưa nhận được dữ liệu cảm biến – kiểm tra lại HTTPS."; }, 2000);
+  link = TiltLink.joinPad(code, {
+    onOpen() {
+      joined = true;
+      $("padState").textContent = "Phòng " + code;
+      $("joinBox").hidden = true; $("live").hidden = false; $("controls").hidden = false;
+      setTimeout(() => { if (!got) $("joinErr").textContent = "Chưa nhận được dữ liệu cảm biến – kiểm tra lại HTTPS."; }, 2000);
+    },
+    onClosed() { joined = false; $("padState").textContent = "Màn hình đã đóng"; },
+    onError(text) { $("joinErr").textContent = text; $("joinBtn").disabled = false; },
   });
 }
 
@@ -90,12 +94,10 @@ function onOrient(e){
   if (now - lastSend < 16) return;              // ~60 lần/giây
   lastSend = now;
   const o = (screen.orientation && screen.orientation.angle) ?? (window.orientation || 0);
-  socket.volatile.emit("orient", { a: +e.alpha.toFixed(2), b: +e.beta.toFixed(2), g: +e.gamma.toFixed(2), o });
+  link.send({ t: "orient", a: +e.alpha.toFixed(2), b: +e.beta.toFixed(2), g: +e.gamma.toFixed(2), o });
 }
 
-$("reset").onclick = () => { if (joined) { socket.emit("reset"); if (navigator.vibrate) navigator.vibrate(30); } };
-socket.on("room:closed", () => { joined = false; $("padState").textContent = "Màn hình đã đóng"; });
-socket.on("disconnect", () => { $("padState").textContent = "Mất kết nối…"; });
+$("reset").onclick = () => { if (joined) { link.send({ t: "reset" }); if (navigator.vibrate) navigator.vibrate(30); } };
 })();
 </script>
 </body>

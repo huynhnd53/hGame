@@ -4,8 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tilt Pad – màn hình máy tính</title>
-<link rel="stylesheet" href="/style.css">
-<script src="/socket.io/socket.io.js"></script>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"></script>
+<script src="link.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
@@ -36,33 +37,47 @@
 "use strict";
 const $ = id => document.getElementById(id);
 
-// ---------- Socket.IO ----------
-const socket = io();
+// ---------- Kết nối với điện thoại (WebRTC, xem link.js) ----------
 let target = new THREE.Quaternion();     // tư thế đích (đã trừ gốc)
 let raw = new THREE.Quaternion();        // tư thế thô từ điện thoại
 let offset = new THREE.Quaternion();     // gốc "thẳng"
 let havePad = false, pendingReset = false;
 
-socket.on("connect", () => {
-  socket.emit("screen:create", ({ code }) => {
+// Trang điện thoại nằm cạnh trang này; ?peer=… (máy chủ ghép cặp riêng) được chuyển theo.
+const padUrl = (code) => {
+  const u = new URL("pad.html", location.href);
+  const peer = new URLSearchParams(location.search).get("peer");
+  if (code) u.searchParams.set("c", code);
+  if (peer) u.searchParams.set("peer", peer);
+  return u;
+};
+$("padUrl").textContent = padUrl().host + padUrl().pathname;
+
+TiltLink.hostScreen({
+  onCode(code) {
     $("codeOut").textContent = code;
-    $("padUrl").textContent = location.host + "/pad";
     $("qr").innerHTML = "";
-    new QRCode($("qr"), { text: location.origin + "/pad?c=" + code, width: 140, height: 140, correctLevel: QRCode.CorrectLevel.M });
-  });
+    new QRCode($("qr"), { text: padUrl(code).href, width: 140, height: 140, correctLevel: QRCode.CorrectLevel.M });
+  },
+  onPads(n) {
+    havePad = n > 0;
+    $("padDot").classList.toggle("live", havePad);
+    $("padText").textContent = !havePad ? "Đang chờ điện thoại…" : n === 1 ? "Điện thoại đã kết nối" : n + " điện thoại đang kết nối";
+  },
+  onMessage(d) {
+    if (d.t === "reset") { pendingReset = true; return; }
+    if (d.t !== "orient") return;
+    const num = (v) => (Number.isFinite(+v) ? +v : 0);
+    const a = num(d.a), b = num(d.b), g = num(d.g), o = num(d.o);
+    $("ra").textContent = a.toFixed(0) + "°"; $("rb").textContent = b.toFixed(0) + "°"; $("rg").textContent = g.toFixed(0) + "°";
+    deviceToQuaternion(raw, a, b, g, o);
+    if (pendingReset) { offset.copy(raw).invert(); pendingReset = false; }
+    target.copy(offset).multiply(raw);
+  },
+  onError(err) {
+    $("padText").textContent = "Không mở được phòng (" + (err.type || err.message) + "). Tải lại trang để thử lại.";
+  },
 });
-socket.on("pads", n => {
-  havePad = n > 0;
-  $("padDot").classList.toggle("live", havePad);
-  $("padText").textContent = !havePad ? "Đang chờ điện thoại…" : n === 1 ? "Điện thoại đã kết nối" : n + " điện thoại đang kết nối";
-});
-socket.on("orient", d => {
-  $("ra").textContent = d.a.toFixed(0) + "°"; $("rb").textContent = d.b.toFixed(0) + "°"; $("rg").textContent = d.g.toFixed(0) + "°";
-  deviceToQuaternion(raw, d.a, d.b, d.g, d.o);
-  if (pendingReset) { offset.copy(raw).invert(); pendingReset = false; }
-  target.copy(offset).multiply(raw);
-});
-socket.on("reset", () => { pendingReset = true; });
 $("resetBtn").onclick = () => { pendingReset = true; };
 
 // ---------- DeviceOrientation (độ) → quaternion ----------
@@ -132,6 +147,7 @@ function loop() {
   requestAnimationFrame(loop);
 }
 loop();
+if (new URLSearchParams(location.search).has("debug")) window.__tilt = { target, body };
 })();
 </script>
 </body>

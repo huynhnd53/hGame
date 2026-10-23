@@ -410,43 +410,52 @@ function clearsNet(from, v, margin) {
   const y = from.y + v.vy * tn - 0.5 * v.g * tn * tn, x = from.x + v.vx * tn;
   return y - BALL_R >= netHeight(x) + margin;
 }
+// Mỗi kiểu đánh: tốc độ bóng và độ sâu (m tính từ lưới) đi từ mức nhẹ tới mức mạnh theo lực đánh 0..1; xoáy (spin,
+// cộng vào trọng lực SPIN_G mỗi đơn vị) cũng có thể tăng theo lực. Đánh quá mạnh thì bóng dễ ra ngoài, dink quá tay
+// thì bóng vượt khỏi vùng cấm.
 const SHOTS = {
-  serve: { margin: 0.3, speed: 12, spin: 0.3, label: "Giao bóng" },
-  dink: { margin: 0.08, speed: 6.2, spin: -0.35, label: "Dink" },
-  drive: { margin: 0.16, speed: 13.5, spin: 0, label: "Đánh thẳng" },
-  fast: { margin: 0.1, speed: 17, spin: 0.15, label: "Đánh mạnh" },
-  vut: { margin: 0.28, speed: 15, spin: 1, label: "Vụt" },
-  smash: { margin: 0.06, speed: 20, spin: 0.2, label: "Smash!" },
-  lob: { margin: 1.4, speed: 9, spin: 0.2, label: "Lốp" },
-  netfault: { margin: 0, speed: 12, spin: 0, label: "Smash hụt – bóng thấp" },
+  serve: { margin: 0.3, v: [10, 13.5], depth: [4.4, 6.1], spin: 0.3, label: "Giao bóng" },
+  dink: { margin: 0.08, v: [4.2, 7.8], depth: [0.6, 2.4], spin: -0.35, label: "Dink" },
+  drive: { margin: 0.16, v: [8.5, 19], depth: [3.2, 6.7], spin: 0, label: "Đánh thẳng" },
+  fast: { margin: 0.1, v: [8.5, 19], depth: [3.2, 6.7], spin: 0.15, label: "Đánh mạnh" },
+  vut: { margin: 0.28, v: [9, 19.5], depth: [3.6, 6.6], spin: [0.6, 1.5], label: "Vụt" },
+  smash: { margin: 0.06, v: [13, 25], depth: [2.4, 5.6], spin: 0.2, label: "Smash!" },
+  lob: { margin: 1.4, v: [7, 11.5], depth: [4.6, 6.8], spin: 0.2, label: "Lốp" },
+  netfault: { margin: 0, v: [12, 12], depth: [0, 0], spin: 0, label: "Smash hụt – bóng thấp" },
 };
-/** Chọn đích theo kiểu đánh, rồi tìm thời gian bay ngắn nhất mà vẫn qua lưới an toàn. */
-function shotVelocity(from, kind, aimX, sigma, depthJitter = 0) {
+const span = (r, p) => (Array.isArray(r) ? lerp(r[0], r[1], p) : r);
+/** Các số ngẫu nhiên của một cú đánh, rút một lần: tính lại đường bay (lực cập nhật) thì vẫn nhắm đúng chỗ cũ. */
+const makeDraws = () => ({ gx: gauss(), gz: gauss(), gt: gauss(), r: Math.random(), r2: Math.random() });
+/**
+ * Đích theo kiểu đánh và lực (power 0..1; máy đánh thì để null, lấy lực ngẫu nhiên vừa phải), rồi tìm thời gian bay
+ * ngắn nhất ứng với tốc độ đó mà vẫn qua lưới an toàn.
+ */
+function shotVelocity(from, kind, aimX, sigma, power = null, d = makeDraws()) {
   const s = sideOf(from.z), o = -s;
-  let tz;
-  if (kind === "dink") tz = o * rand(0.7, 1.8);
-  else if (kind === "lob") tz = o * rand(5.4, 6.3);
-  else if (kind === "serve") tz = o * rand(4.6, 5.9);
-  else if (kind === "smash") tz = o * rand(3.0, 5.0);
-  else if (kind === "vut") tz = o * rand(4.2, 6.0);
-  else tz = o * rand(3.8, 5.6);
-  let tx = kind === "serve" ? game.serveBoxSign * rand(0.7, 2.1) : aimX;
-  tx += gauss() * sigma; tz += o * (gauss() * sigma * 0.8 + depthJitter);
   const spec = SHOTS[kind];
-  const g = G + spec.spin * SPIN_G;
+  const pw = power == null ? 0.3 + d.r * 0.45 : clamp(power, 0, 1);
+  let tz = o * (span(spec.depth, pw) + (d.r2 - 0.5) * 0.4);
+  let tx = kind === "serve" ? game.serveBoxSign * (0.7 + d.r2 * 1.4) : aimX;
+  tx += d.gx * sigma; tz += o * d.gz * sigma * 0.8;
+  const g = G + span(spec.spin, pw) * SPIN_G;
   if (kind === "netfault") {                                  // đập bóng thấp: cắm thẳng vào lưới
-    const t = Math.abs(from.z) / spec.speed;
+    const t = Math.abs(from.z) / spec.v[0];
     return { vx: (tx - from.x) / t, vz: -from.z / t, vy: (0.3 - from.y + 0.5 * G * t * t) / t, g: G };
   }
   const dist = Math.hypot(tx - from.x, tz - from.z);
-  let t = dist / spec.speed;
+  let t = dist / span(spec.v, pw);
   for (let i = 0; i < 200 && !clearsNet(from, solve(from, tx, tz, t, g), spec.margin); i++) t += 0.02;
   if (kind === "lob") t = Math.max(t, 1.5 + dist / 25);
-  t *= 1 + gauss() * sigma * 0.035;                         // lệch nhịp: thỉnh thoảng vào lưới
+  t *= 1 + d.gt * sigma * 0.035;                            // lệch nhịp: thỉnh thoảng vào lưới
   return solve(from, tx, tz, Math.max(0.25, t), g);
 }
 
-function hitBall(p, kind, aimX, sigma, quality) {
+// Cú vung điện thoại thường còn nhanh thêm một chút sau lúc bóng chạm vợt; trong POWER_UPDATE giây đầu, lực tăng thì tính
+// lại đường bay từ chỗ quả bóng đang ở (cùng đích, cùng số ngẫu nhiên) để vung mạnh là bóng đi mạnh thật.
+const POWER_UPDATE = 0.12;
+let powerShot = null;            // { sw, kind, aimX, sigma, power, draws, t0 }
+
+function hitBall(p, kind, aimX, sigma, quality, power = null, sw = null) {
   const s = p.side;
   if (game.state === "rally") {
     const requireBounce = game.shotN + 1 <= 3;
@@ -456,21 +465,47 @@ function hitBall(p, kind, aimX, sigma, quality) {
   // Động tác phải hợp với bóng: đập bóng thấp là vào lưới (người chơi), vụt bóng đã cao thì thành lốp bổng.
   if (kind === "smash" && ball.y < SMASH_MIN) kind = s === 1 && !demo ? "netfault" : "fast";
   if (kind === "vut" && ball.y > 1.35) kind = "lob";
-  const v = shotVelocity(from, kind, aimX, sigma);
+  const draws = makeDraws();
+  const v = shotVelocity(from, kind, aimX, sigma, power, draws);
   Object.assign(ball, v); ball.netHit = false;
+  powerShot = sw && power != null && kind !== "netfault" ? { sw, kind, aimX, sigma, power, draws, t0: game.t, quality } : null;
   game.hitter = s; game.shotN++; game.bounces = 0; game.bounceSide = 0;
   p.shots++; p.plan = null; players[-s].plan = null;
   if (p.anim.phase !== "strike" || game.t - p.anim.t0 > STRIKE_T) strike(p, kind === "serve" || p.lastFore ? 1 : -1, from.y, true);
   game.samples = predict();
   players[-s].plan = plan(players[-s]);
-  sound("pock", kind === "dink" ? 0.6 : 1);
+  const pw = power == null ? 0.55 : power;
+  sound("pock", 0.35 + pw * 0.75);                          // đánh mạnh thì tiếng chạm to hơn
   if (s === 1) {
-    link.broadcast({ t: "buzz", ms: kind === "smash" || kind === "fast" ? 60 : 30 });
-    const tag = quality == null ? "" : quality > 0.85 ? "Đẹp!" : quality < 0.4 ? (game.lastOff > 0 ? "Sớm" : "Muộn") : "";
-    if (!demo) showGesture(SHOTS[kind].label, [tag, lastGestureInfo].filter(Boolean).join(" · "), kind === "netfault" ? "bad" : quality > 0.85 ? "good" : "");
+    link.broadcast({ t: "buzz", ms: Math.round(15 + pw * 70) });
+    showShotHud(kind, quality, power);
     if (kind === "serve" || !swingFromKeys) fpSwing(kind);
   }
   if (game.state === "serve") { game.state = "rally"; hint(""); }
+}
+
+/** Góc màn hình: động tác, lực, nhịp. */
+function showShotHud(kind, quality, power) {
+  if (demo) return;
+  const label = kind === "drive" && power != null && power >= 0.75 ? SHOTS.fast.label : SHOTS[kind].label;
+  const tag = quality == null ? "" : quality > 0.85 ? "Đẹp!" : quality < 0.4 ? (game.lastOff > 0 ? "Sớm" : "Muộn") : "";
+  const pw = power == null ? "" : "Lực " + Math.round(power * 100) + "%";
+  showGesture(label, [pw, tag, lastGestureInfo].filter(Boolean).join(" · "), kind === "netfault" ? "bad" : quality > 0.85 ? "good" : "");
+}
+/** Trong lúc bóng vừa rời vợt: cú vung còn nhanh thêm thì tính lại đường bay theo lực mới. */
+function updatePowerShot() {
+  const ps = powerShot;
+  if (!ps) return;
+  if (game.t - ps.t0 > POWER_UPDATE || game.hitter !== 1 || ball.netHit || game.bounces || sideOf(ball.z) !== 1) { powerShot = null; return; }
+  const kind = ps.kind === "fast" ? "drive" : ps.kind;
+  const np = PM.power(ps.sw, kind);
+  if (np < ps.power + 0.04) return;
+  ps.power = np;
+  Object.assign(ball, shotVelocity({ x: ball.x, y: ball.y, z: ball.z }, ps.kind, ps.aimX, ps.sigma, np, ps.draws));
+  game.samples = predict();
+  players[-1].plan = plan(players[-1]);
+  lastGestureInfo = gestureInfo(ps.sw);
+  showShotHud(ps.kind, ps.quality, np);
 }
 
 // ---------- Máy (và người chơi ở chế độ xem máy đấu) chọn cú đánh ----------
@@ -527,7 +562,7 @@ function requestSwing(kind, info = {}) {
     if (info.sw) info.sw.hit = true;
     swingFromKeys = kind !== "phone";
     if (swingFromKeys) fpSwing("serve");
-    serveBall(p, info.aim ?? aimFromMouse());
+    serveBall(p, info.aim ?? aimFromMouse(), info.sw ? PM.power(info.sw, "serve") : 0.55, info.sw || null);
     return;
   }
   if (game.state !== "rally") return;
@@ -542,10 +577,10 @@ function requestSwing(kind, info = {}) {
 }
 const aimFromMouse = () => (performance.now() - mouseAimAt < 4000 ? mouseAim : 0);
 
-function serveBall(p, aim) {
+function serveBall(p, aim, power = null, sw = null) {
   const pos = handPosition(p);
   Object.assign(ball, { x: pos.x, y: 0.75, z: pos.z });
-  hitBall(p, "serve", aim * 2, p.side === 1 && !demo ? 0.18 : level.sigma * 0.35, null);
+  hitBall(p, "serve", aim * 2, p.side === 1 && !demo ? 0.18 : level.sigma * 0.35, null, power, sw);
 }
 
 /** Người chơi: bóng tới điểm chạm mà đang trong lúc vung thì đánh trúng. */
@@ -566,9 +601,12 @@ function playerContact(p) {
   // Cú vung điện thoại: kiểu đánh chốt lúc chạm bóng, theo tốc độ cao nhất đo được tới lúc đó.
   const kind = swing.kind === "phone" ? classifySwing(swing.sw) : swing.kind;
   lastGestureInfo = swing.kind === "phone" ? gestureInfo(swing.sw) : "";
-  if (swing.sw) swing.sw.hit = true;
+  // Lực: điện thoại thì theo tốc độ vung (cập nhật tiếp vài phần trăm giây sau khi chạm); phím thì vừa phải.
+  const sw = swing.sw;
+  const power = sw ? PM.power(sw, kind === "fast" ? "drive" : kind) : KEY_POWER[kind] ?? 0.6;
+  if (sw) sw.hit = true;
   swing = null;
-  hitBall(p, kind, aimX, 0.1 + (1 - quality) * 0.55, quality);
+  hitBall(p, kind, aimX, 0.1 + (1 - quality) * 0.55, quality, power, sw);
 }
 
 function aiContact(p) {
@@ -580,6 +618,9 @@ function aiContact(p) {
   const { kind, aimX } = aiShot(p);
   hitBall(p, kind, aimX, p.side === 1 ? 0.35 : level.sigma, null);
 }
+
+// Lực khi đánh bằng phím (không đo được tốc độ vung).
+const KEY_POWER = { vut: 0.6, drive: 0.55, smash: 0.75, dink: 0.45, lob: 0.5 };
 
 // Bàn phím, chuột
 addEventListener("keydown", (e) => {
@@ -753,6 +794,7 @@ function simStep() {
   } else if (st === "rally" || st === "point") {
     const ev = stepBall(ball);
     if (ev) onBallEvent(ev);
+    updatePowerShot();
     if (game.state === "rally" && (Math.abs(ball.z) > HALF_L + 14 || Math.abs(ball.x) > HALF_W + 14)) endPoint(-game.hitter, "Bóng ra ngoài");
   }
   if (game.state === "rally") {

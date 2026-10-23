@@ -59,6 +59,16 @@ function classify(sw) {
     ? { kind: "fast", why: `vung ngang ${f(sweep)}°, ${f(sw.peak)}°/s > ${TH.fast}` }
     : { kind: "drive", why: `vung ngang ${f(sweep)}°, lên/xuống ${f(rise)}°` };
 }
+/**
+ * Lực đánh 0..1 theo tốc độ vung cao nhất: dink tính trong khoảng vung nhẹ (bắt đầu vung → ngưỡng dink), các cú khác
+ * trong khoảng ngưỡng dink → POWER_MAX. Cong nhẹ (mũ 0,85) để vung vừa tay đã ra lực khá.
+ */
+const POWER_MAX = 1500;
+function power(sw, kind) {
+  if (!sw) return 0.6;
+  const [lo, hi] = kind === "dink" ? [TH.start, TH.dink] : kind === "serve" ? [TH.start, 1100] : [TH.dink, POWER_MAX];
+  return Math.pow(clamp((sw.peak - lo) / (hi - lo), 0, 1), 0.85);
+}
 const NAMES = { vut: "Vụt từ dưới lên", smash: "Smash", dink: "Dink", lob: "Lốp", drive: "Đánh thẳng", fast: "Đánh mạnh" };
 function info(sw) {
   if (!sw) return "";
@@ -197,5 +207,5 @@ function buildPaddle(scale = 1) {
   return g;
 }
 
-window.PaddleMotion = { create, classify, info, buildPaddle, place, poseFrom, tipOf, deviceToQuaternion, TH, NAMES };
+window.PaddleMotion = { create, classify, power, info, buildPaddle, place, poseFrom, tipOf, deviceToQuaternion, TH, NAMES };
 })();

@@ -118,11 +118,17 @@ không, dùng đúng `paddle.js` của game:
   gần nhất, màu theo tốc độ.
 - Số đo trực tiếp: đầu vợt ngóc/chúc (độ), lệch trái/phải, tốc độ xoay với các ngưỡng.
 - Biểu đồ độ cao đầu vợt 3 giây gần nhất: đoạn hồng là cú đánh, đoạn xám là lấy đà/đưa về.
-- Cú vung vừa rồi: tên động tác, **vì sao** (ví dụ "đầu vợt từng giơ 70° rồi chúc xuống 100°"), tốc độ cao nhất, góc
+- Cú vung vừa rồi: tên động tác, lực đánh (%), **vì sao** (ví dụ "đầu vợt từng giơ 70° rồi chúc xuống 100°"), tốc độ cao nhất, góc
   lên/xuống, góc quét ngang, góc giơ cao nhất.
 - Tập từng động tác: chọn Vụt / Smash / Dink / Lốp / Đánh thẳng, làm thử, trang báo đúng/sai và đếm số lần đúng.
 - Mở từ menu game góc nhìn thứ nhất (nút "Kiểm tra cử động vợt"), trang chọn game, hoặc chọn trên điện thoại.
 
+- **Lực đánh** 0..1 theo tốc độ vung cao nhất (`PaddleMotion.power`): dink tính trong khoảng 170–420°/s, các cú khác
+  420–1500°/s. Lực quyết định tốc độ bóng, độ sâu (mỗi kiểu đánh một khoảng, ví dụ vụt 3,6 → 6,6 m tính từ lưới) và
+  xoáy của cú vụt; đánh quá mạnh thì dễ ra ngoài, dink quá tay thì vượt vùng cấm. Bóng thấp ở gần lưới thì phải đánh
+  vồng lên cho qua lưới nên không thể đập thẳng thật nhanh. Vì cú vung còn nhanh thêm sau lúc chạm bóng, trong 0,12 s
+  đầu lực tăng thì đường bay được tính lại từ chỗ quả bóng đang ở (cùng đích, cùng độ lệch ngẫu nhiên). Tiếng chạm bóng
+  và độ rung điện thoại theo lực; góc màn hình ghi "Lực …%". Đánh bằng phím thì lực vừa phải cố định.
 - Xoáy làm đổi trọng lực hiệu dụng của quả bóng (xoáy lên +3,5 m/s², dink −1,2 m/s²); máy giải đường bay và đoán điểm
   rơi với đúng trọng lực đó nên vẫn khớp tuyệt đối.
 - Bàn phím: `Space`/chuột vụt, `C` smash (chuột phải), `Z` dink (Shift + chuột), `X` lốp, `V` đánh thẳng.

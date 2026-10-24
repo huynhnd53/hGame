@@ -124,13 +124,19 @@ không, dùng đúng `paddle.js` của game:
 - Mở từ menu game góc nhìn thứ nhất (nút "Kiểm tra cử động vợt"), trang chọn game, hoặc chọn trên điện thoại.
 
 - **Lực đánh** 0..1 theo tốc độ vung cao nhất (`PaddleMotion.power`): dink tính trong khoảng 170–420°/s, các cú khác
-  420–1500°/s. Lực quyết định tốc độ bóng, độ sâu (mỗi kiểu đánh một khoảng, ví dụ vụt 3,6 → 6,6 m tính từ lưới) và
-  xoáy của cú vụt; đánh quá mạnh thì dễ ra ngoài, dink quá tay thì vượt vùng cấm. Bóng thấp ở gần lưới thì phải đánh
-  vồng lên cho qua lưới nên không thể đập thẳng thật nhanh. Vì cú vung còn nhanh thêm sau lúc chạm bóng, trong 0,12 s
-  đầu lực tăng thì đường bay được tính lại từ chỗ quả bóng đang ở (cùng đích, cùng độ lệch ngẫu nhiên). Tiếng chạm bóng
-  và độ rung điện thoại theo lực; góc màn hình ghi "Lực …%". Đánh bằng phím thì lực vừa phải cố định.
-- Xoáy làm đổi trọng lực hiệu dụng của quả bóng (xoáy lên +3,5 m/s², dink −1,2 m/s²); máy giải đường bay và đoán điểm
-  rơi với đúng trọng lực đó nên vẫn khớp tuyệt đối.
+  420–1500°/s. **Lực quyết định tốc độ bóng rời vợt** (ví dụ vụt 9 → 24 m/s, smash 14 → 28 m/s); máy chỉ chọn góc bay
+  (trong khoảng góc của từng kiểu đánh) sao cho qua lưới và rơi gần chỗ muốn đánh, bằng cách bay thử đúng như bóng thật.
+  Vung nhẹ thì bóng chậm, vồng, rơi ngắn; vung mạnh thì bóng lao nhanh. Mạnh quá mà không xoáy, hay đánh mạnh quả bóng
+  thấp sát lưới, thì bay ra ngoài như thật; vụt xoáy lên mạnh nên đánh mạnh vẫn cắm vào sân. Cú khéo (dink, lốp, giao
+  bóng) được nhích tốc độ nếu không qua nổi lưới. Bóng có **lực cản không khí** (0,045·v², bóng có lỗ) nên bóng mạnh chậm
+  lại và cắm xuống. Người và máy đón bóng nảy gần đỉnh nảy (cao nhất trong tầm với) để có chỗ đánh mạnh.
+- Cú vung còn nhanh thêm sau lúc chạm bóng: trong 0,12 s đầu, lực tăng (hoặc kiểu đánh rõ hơn, ví dụ tưởng lốp hóa ra
+  vụt) thì đường bay được tính lại từ chỗ quả bóng đang ở (cùng đích, cùng độ lệch ngẫu nhiên).
+- Thấy được lực: góc màn hình ghi kiểu đánh, **km/h** và "Lực …%"; bóng nhanh dãn theo hướng bay, có vệt và bóng mờ cam
+  đỏ phía sau; lúc chạm có chớp sáng to theo lực, camera rung khi mình đánh mạnh; tiếng chạm và độ rung điện thoại theo
+  lực. Máy đỡ bóng nhanh khó hơn (lệch nhiều hơn, hay chỉ chặn nhẹ). Đánh bằng phím thì lực vừa phải cố định.
+- Xoáy làm đổi trọng lực hiệu dụng của quả bóng (vụt +2 → +6 m/s² theo lực, dink −1,2 m/s²). Bóng thật, đoán điểm rơi
+  và tìm góc đánh dùng chung một hàm bay (`fly`: trọng lực + xoáy + lực cản) nên vẫn khớp tuyệt đối.
 - Bàn phím: `Space`/chuột vụt, `C` smash (chuột phải), `Z` dink (Shift + chuột), `X` lốp, `V` đánh thẳng.
 
 ## Vgang Online: điện thoại làm tay lái (`pad.html?game=vgang`)

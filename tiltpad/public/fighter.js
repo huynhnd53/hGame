@@ -14,17 +14,19 @@ const DEG = Math.PI / 180;
 // ---------- Thông số ----------
 const MAP = 6000;                 // nửa cạnh vùng bay
 const SPEED = { min: 95, cruise: 150, boost: 230, max: 270 };
-const RATE = { roll: 2.6, pitch: 1.25, yaw: 0.45 };   // rad/s khi cần lái hết cỡ
-const GUN = { rate: 13, speed: 950, life: 1.3, dmg: 4 };
-const MISSILE = { speed: 470, accel: 260, turn: 3.2, life: 9, prox: 16, dmg: 60, reload: 5, lockAngle: 18 * DEG, lockRange: 2600, lockTime: 0.8 };
+// Cần lái hết cỡ: nghiêng cánh 65° và lượn 0,95 rad/s; chúc/ngóc 40°. Buông tay thì máy bay tự bay thẳng, bằng.
+const FLY = { bank: 65 * DEG, climb: 40 * DEG, follow: 3.5, turn: 0.95, yaw: 0.4, floor: 260 };
+const GUN = { rate: 13, speed: 950, life: 1.3, dmg: 4, assist: 7 * DEG, hitR: 14 };
+const MISSILE = { speed: 470, accel: 260, turn: 3.2, life: 9, prox: 18, dmg: 60, reload: 3, lockAngle: 26 * DEG, lockRange: 3000, lockTime: 0.5 };
 const FLARE = { count: 3, recharge: 8 };
-const WAVES = [3, 4, 5, 6, 7];
+const WAVES = [2, 3, 4, 5, 6];
+// missiles: địch bắt đầu bắn tên lửa từ đợt nào (0 = không bắn).
 const LEVELS = [
-  { name: "Dễ", turn: 0.85, aim: 9 * DEG, hp: 28, dmgTaken: 0.6, missiles: false },
-  { name: "Vừa", turn: 1.1, aim: 6 * DEG, hp: 36, dmgTaken: 1, missiles: true },
-  { name: "Khó", turn: 1.35, aim: 4 * DEG, hp: 44, dmgTaken: 1.3, missiles: true },
+  { name: "Dễ", turn: 0.7, aim: 5 * DEG, hp: 24, dmgTaken: 0.35, missiles: 0 },
+  { name: "Vừa", turn: 0.9, aim: 4 * DEG, hp: 30, dmgTaken: 0.6, missiles: 4 },
+  { name: "Khó", turn: 1.2, aim: 4.5 * DEG, hp: 40, dmgTaken: 1, missiles: 3 },
 ];
-let level = LEVELS[1];
+let level = LEVELS[0];
 
 // ---------- Cảnh ----------
 const stage = $("stage");
@@ -191,7 +193,7 @@ function sound(kind, vol = 1) {
 }
 
 // ---------- Trạng thái ----------
-const player = { pos: new T.Vector3(), q: new T.Quaternion(), speed: SPEED.cruise, hp: 100, alive: true, mesh: makeJet(0x8a96a8, 0x5d6878),
+const player = { pos: new T.Vector3(), q: new T.Quaternion(), heading: 0, climb: 0, bank: 0, calm: 0, speed: SPEED.cruise, hp: 100, alive: true, mesh: makeJet(0x8a96a8, 0x5d6878),
   gunCd: 0, missiles: [0, 0], flares: FLARE.count, flareT: 0, lock: null, lockT: 0, lockBeep: 0, deadT: 0 };
 scene.add(player.mesh);
 const enemies = [], bullets = [], missiles = [], flares = [];
@@ -204,7 +206,8 @@ const upOf = (q, out = new T.Vector3()) => out.set(0, 1, 0).applyQuaternion(q);
 
 function resetPlayer(pos, dir) {
   player.pos.copy(pos);
-  player.q.setFromUnitVectors(new T.Vector3(0, 0, -1), dir.clone().normalize());
+  player.heading = Math.atan2(-dir.x, -dir.z); player.climb = 0; player.bank = 0;
+  setAttitude(player);
   player.speed = SPEED.cruise; player.hp = 100; player.alive = true; player.deadT = 0;
   player.missiles = [0, 0]; player.flares = FLARE.count; player.lock = null; player.lockT = 0;
   player.mesh.visible = game.view === "chase";
@@ -227,7 +230,7 @@ addEventListener("blur", () => keys.clear());
 
 // Điện thoại: cầm ngang như tay cầm chơi game. Lúc căn giữa ghi lại trục "phía trước" (mép trên màn hình theo cách cầm)
 // và trục "bên phải" của máy; sau đó độ chúc/ngóc của trục trước là chúc/ngóc máy bay, độ nghiêng của trục phải là lượn.
-const PHONE = { pitchFull: 28, rollFull: 35, dead: 3 };
+const PHONE = { pitchFull: 25, rollFull: 30, dead: 4 };
 const phone = { count: 0, relay: 0, at: -1e9, raw: new T.Quaternion(), F: null, R: null, pitch0: 0, roll0: 0, center: true, pitch: 0, roll: 0, gun: false, boost: false };
 const zee = new T.Vector3(0, 0, 1), eul = new T.Euler(), qa = new T.Quaternion(), q1 = new T.Quaternion(-Math.SQRT1_2, 0, 0, Math.SQRT1_2);
 function deviceQ(q, a, b, g) { eul.set(b * DEG, a * DEG, -g * DEG, "YXZ"); q.setFromEuler(eul); q.multiply(q1); }
@@ -270,35 +273,44 @@ function readControls() {
 
 // ---------- Bay ----------
 const dq = new T.Quaternion(), de = new T.Euler();
+// Hướng máy bay = hướng bay (heading), góc lên/xuống (climb), góc nghiêng cánh (bank). Không lộn ngược được.
+const setAttitude = (p) => p.q.setFromEuler(de.set(p.climb, p.heading, -p.bank, "YXZ"));
 function flyPlayer(dt) {
   const p = player;
-  forwardOf(p.q, fwd); upOf(p.q, up);
-  // Độ nghiêng cánh so với chân trời (để tự cân bằng khi buông cần lái).
-  right.crossVectors(fwd, axisY).normalize();
-  const bank = Math.atan2(right.dot(up), up.y);              // dương: nghiêng phải (trục "lên" của máy bay ngả sang phải)
-  let rollRate = ctl.roll * RATE.roll;                       // dương: lượn phải
-  if (Math.abs(ctl.roll) < 0.08 && Math.abs(fwd.y) < 0.9) rollRate += clamp(-bank * 1.4, -1.2, 1.2);   // buông cần: tự cân bằng
-  de.set(ctl.pitch * RATE.pitch * dt, -ctl.yaw * RATE.yaw * dt, -rollRate * dt, "XYZ");
-  p.q.multiply(dq.setFromEuler(de)).normalize();
-  // Lượn thì tự quay theo (như máy bay thật): cánh nghiêng tạo lực ngang.
-  p.q.premultiply(dq.setFromAxisAngle(axisY, -Math.sin(bank) * 0.55 * dt)).normalize();
+  const k = 1 - Math.exp(-dt * FLY.follow);
+  // Nghiêng điện thoại = góc nghiêng cánh; cánh nghiêng thì máy bay lượn vòng.
+  p.bank += (ctl.roll * FLY.bank - p.bank) * k;
+  p.heading -= (Math.sin(p.bank) / Math.sin(FLY.bank) * FLY.turn + ctl.yaw * FLY.yaw) * dt;
+  // Chúc/ngóc điện thoại = góc bổ nhào/kéo lên.
+  let wantClimb = ctl.pitch * FLY.climb;
+  // Né đất: nhìn trước 2,5 giây, sát đất quá thì tự ngóc lên.
+  const fx = -Math.sin(p.heading), fz = -Math.cos(p.heading), ahead = p.speed * 2.5;
+  let g = 0;
+  for (const u of [0, 0.35, 0.7, 1]) g = Math.max(g, terrainH(p.pos.x + fx * ahead * u, p.pos.z + fz * ahead * u));
+  const clear = p.pos.y - g;
+  p.assist = clear < FLY.floor;
+  if (p.assist) wantClimb = Math.max(wantClimb, clamp((FLY.floor - clear) / FLY.floor, 0, 1) * 50 * DEG);
+  if (p.pos.y > 4000) wantClimb = Math.min(wantClimb, 0);
+  p.climb += (wantClimb - p.climb) * k;
+  // Ra khỏi vùng chiến: tự quay về.
+  const out = Math.max(Math.abs(p.pos.x), Math.abs(p.pos.z)) - MAP * 0.92;
+  if (out > 0) {
+    tmp.set(-p.pos.x, 0, -p.pos.z).normalize();
+    p.heading += Math.sign(tmp.x * fz - tmp.z * fx) * Math.min(1, out / 400) * 0.8 * dt;
+  }
+  setAttitude(p);
   forwardOf(p.q, fwd);
   // Tốc độ: tăng tốc/giảm tốc, bổ nhào thì nhanh lên, kéo lên thì chậm lại.
   const target = ctl.boost ? SPEED.boost : SPEED.cruise;
   p.speed += (target - p.speed) * Math.min(1, dt * 0.6) - fwd.y * 30 * dt;
   p.speed = clamp(p.speed, SPEED.min, SPEED.max);
   p.pos.addScaledVector(fwd, p.speed * dt);
-  // Ra khỏi vùng chiến: tự quay về.
-  const out = Math.max(Math.abs(p.pos.x), Math.abs(p.pos.z)) - MAP * 0.92;
-  if (out > 0) {
-    tmp.set(-p.pos.x, 0, -p.pos.z).normalize();
-    const turn = Math.sign(tmp.x * fwd.z - tmp.z * fwd.x) * Math.min(1, out / 400) * 0.8 * dt;
-    p.q.premultiply(dq.setFromAxisAngle(axisY, turn)).normalize();
-  }
   if (p.pos.y > 4200) p.pos.y = 4200;
+  // Máu tự hồi khi 5 giây không trúng đạn.
+  if ((p.calm += dt) > 5) p.hp = Math.min(100, p.hp + 6 * dt);
   const ground = Math.max(0, terrainH(p.pos.x, p.pos.z));
   if (p.pos.y < ground + 6) { killPlayer("Đâm xuống đất!"); return; }
-  game.warn = p.pos.y - ground < 220 && fwd.y < -0.05 ? "KÉO LÊN!" : "";
+  game.warn = p.assist && ctl.pitch < 0 ? "KÉO LÊN!" : "";
   if (out > 0) game.warn = game.warn || "QUAY LẠI VÙNG CHIẾN";
 }
 
@@ -360,7 +372,7 @@ function flyEnemy(e, dt) {
   }
   // Tên lửa (từ đợt 3, mức Vừa trở lên): giữ người chơi trong tầm một lúc thì phóng.
   e.missileCd -= dt;
-  if (level.missiles && game.wave >= 3 && player.alive && dist < 2600 && aim < 20 * DEG) e.lockT += dt; else e.lockT = 0;
+  if (level.missiles && game.wave >= level.missiles && player.alive && dist < 2600 && aim < 20 * DEG) e.lockT += dt; else e.lockT = 0;
   if (e.lockT > 1.6 && e.missileCd <= 0) { e.missileCd = rand(10, 16); e.lockT = 0; launchMissile(e, player, "enemy"); }
   if (e.hp < level.hp * 0.5 && (e.smoke -= dt) < 0) { e.smoke = 0.12; puff(e.pos, { color: 0x555555, size: 9, grow: 2, life: 1.4 }); }
 }
@@ -387,7 +399,7 @@ function updateBullets(dt) {
     b.prev.copy(b.pos); b.pos.addScaledVector(b.vel, dt); b.life -= dt;
     let hit = false;
     if (b.owner === "player") {
-      for (const e of enemies) if (!e.dead && segSphere(b.prev, b.pos, e.pos, 9)) { damageEnemy(e, GUN.dmg, b.pos); hit = true; break; }
+      for (const e of enemies) if (!e.dead && segSphere(b.prev, b.pos, e.pos, GUN.hitR)) { damageEnemy(e, GUN.dmg, b.pos); hit = true; break; }
     } else if (player.alive && segSphere(b.prev, b.pos, player.pos, 7)) { damagePlayer(GUN.dmg * level.dmgTaken * 0.8); hit = true; }
     if (hit || b.life <= 0 || b.pos.y < 0) bullets.splice(i, 1);
   }
@@ -498,7 +510,7 @@ function damageEnemy(e, dmg, at) {
 }
 function damagePlayer(d) {
   if (!player.alive) return;
-  player.hp -= d; game.hurt = 0.35;
+  player.hp -= d; player.calm = 0; game.hurt = 0.35;
   link.broadcast({ t: "buzz", ms: Math.min(250, 40 + d * 6) });
   if (player.hp <= 0) killPlayer("Bị bắn hạ!");
 }
@@ -523,7 +535,7 @@ function startWave(n) {
   game.wave = n; updateTop();
   const count = WAVES[n - 1];
   for (let i = 0; i < count; i++) spawnEnemy(i, count);
-  banner("Đợt " + n, count + " máy bay địch" + (level.missiles && n >= 3 ? " · có tên lửa" : ""));
+  banner("Đợt " + n, count + " máy bay địch" + (level.missiles && n >= level.missiles ? " · có tên lửa" : ""));
 }
 function startGame() {
   unlockAudio();
@@ -544,6 +556,21 @@ function endGame(win) {
 function show(id) { $("menu").hidden = id !== "menu"; $("over").hidden = id !== "over"; }
 function toggleView() { game.view = game.view === "chase" ? "cockpit" : "chase"; player.mesh.visible = game.view === "chase" && player.alive; }
 
+// Hỗ trợ ngắm: địch gần tâm ngắm (trong 7°) thì đạn bay về chỗ địch sắp tới.
+function aimDir(fwd) {
+  let best = null, bestA = GUN.assist;
+  for (const e of enemies) {
+    if (e.dead) continue;
+    tmp.subVectors(e.pos, player.pos);
+    if (tmp.length() > 1500) continue;
+    const a = fwd.angleTo(tmp);
+    if (a < bestA) { bestA = a; best = e; }
+  }
+  if (!best) return fwd;
+  const t = best.pos.distanceTo(player.pos) / (GUN.speed + player.speed);
+  return forwardOf(best.q).multiplyScalar(best.speed * t).add(best.pos).sub(player.pos).normalize();
+}
+
 // ---------- Vòng lặp ----------
 function step(dt) {
   game.t += dt;
@@ -554,7 +581,7 @@ function step(dt) {
     if (ctl.gun && player.gunCd <= 0 && player.alive) {
       player.gunCd = 1 / GUN.rate;
       forwardOf(player.q, fwd); right.set(1, 0, 0).applyQuaternion(player.q);
-      for (const s of [1, -1]) shoot(player.pos.clone().addScaledVector(right, s * 2.2).addScaledVector(fwd, 6), fwd, player.speed, "player", 0.35 * DEG);
+      for (const s of [1, -1]) shoot(player.pos.clone().addScaledVector(right, s * 2.2).addScaledVector(fwd, 6), aimDir(fwd), player.speed, "player", 0.35 * DEG);
     }
     updateLock(dt);
   } else if ((player.deadT += dt) > 3 && game.lives > 0) {
@@ -569,12 +596,12 @@ function step(dt) {
   if (game.state === "fight" && enemies.length === 0) {
     if (game.wave >= WAVES.length) { endGame(true); return; }
     game.waveT += dt;
-    if (game.waveT > 3) { game.waveT = 0; player.hp = Math.min(100, player.hp + 35); startWave(game.wave + 1); }
+    if (game.waveT > 3) { game.waveT = 0; player.hp = 100; startWave(game.wave + 1); }
   }
 }
 
 // Camera bám đuôi (mặc định) hoặc trong buồng lái.
-const camPos = new T.Vector3(0, 950, 3700), camUp = new T.Vector3(0, 1, 0), look = new T.Vector3();
+const camPos = new T.Vector3(0, 950, 3700), camUp = new T.Vector3(0, 1, 0), camWant = new T.Vector3(), look = new T.Vector3();
 function updateCamera(dt) {
   forwardOf(player.q, fwd); upOf(player.q, up);
   if (game.view === "cockpit" && player.alive) {
@@ -585,7 +612,7 @@ function updateCamera(dt) {
     const target = tmp.copy(player.pos).addScaledVector(fwd, -24).addScaledVector(up, 6);
     if (!player.alive) target.copy(player.pos).add(new T.Vector3(0, 40, 90));
     camPos.lerp(target, k);
-    camUp.lerp(player.alive ? up : axisY, k).normalize();
+    camUp.lerp(player.alive ? camWant.copy(up).add(axisY).normalize() : axisY, k).normalize();   // nghiêng nửa theo cánh, đỡ chóng mặt
     camera.position.copy(camPos); camera.up.copy(camUp);
     look.copy(player.pos).addScaledVector(fwd, player.alive ? 60 : 0);
     camera.lookAt(look);

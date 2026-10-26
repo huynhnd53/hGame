@@ -142,19 +142,21 @@ không, dùng đúng `paddle.js` của game:
 
 ## Game: Không chiến (`fighter.html`)
 
-https://huynhnd53.github.io/hGame/tiltpad/fighter.html – lái máy bay chiến đấu qua 5 đợt máy bay địch (3 → 7 chiếc) trên
+https://huynhnd53.github.io/hGame/tiltpad/fighter.html – lái máy bay chiến đấu qua 5 đợt máy bay địch (2 → 6 chiếc) trên
 vùng núi, hồ và mây (`fighter.js`).
 
-- **Điện thoại cầm ngang** bằng hai tay là cần lái. Bấm **CĂN GIỮA** để lấy tư thế đang cầm làm gốc; **nghiêng
-  trái/phải** để lượn, **chúc mép trên xuống** để bổ nhào, **ngóc lên** để kéo lên (nghiêng 3° đầu không tính, khoảng 28°
-  chúc/ngóc và 35° nghiêng là hết cần). Trang điện thoại tự xoay theo trọng lực nên khoá xoay màn hình vẫn dùng được.
+- **Điện thoại cầm ngang** bằng hai tay là cần lái. Bấm **CĂN GIỮA** để lấy tư thế đang cầm làm gốc.
+- **Lái kiểu dễ:** nghiêng điện thoại bao nhiêu thì máy bay nghiêng cánh bấy nhiêu (nghiêng 30° là hết cỡ: cánh 65°,
+  lượn một vòng ~6,5 giây); chúc/ngóc 25° là bổ nhào/kéo lên 40°. Về tư thế lúc căn giữa là máy bay bay thẳng, bằng.
+  Máy bay không lộn ngược được. Nghiêng 4° đầu không tính. Trang điện thoại tự xoay theo trọng lực nên khoá xoay màn hình
+  vẫn dùng được.
+- **Tự né đất:** nhìn trước 2,5 giây, sát đất (dưới 260 m) thì tự ngóc lên. Bay ra khỏi vùng chiến thì tự quay lại.
+- **Hỗ trợ ngắm:** địch trong 7° quanh tâm ngắm thì đạn bay về chỗ địch sắp tới. Tên lửa khoá trong 26°, 0,5 giây,
+  nạp lại 3 giây. Không trúng đạn 5 giây thì máu tự hồi; qua đợt mới được đầy máu.
 - Nút trên điện thoại: **BẮN** (giữ), **TÊN LỬA**, **MỒI NHIỆT**, **TĂNG TỐC** (giữ), **GÓC NHÌN** (sau máy bay /
   buồng lái). Điện thoại hiện máu, số tên lửa, mồi nhiệt, trạng thái khoá mục tiêu và cảnh báo, và rung khi trúng đạn.
-- Bay kiểu arcade: thả tay thì máy bay tự cân cánh, nghiêng cánh thì tự lượn vòng; bổ nhào nhanh hơn, kéo lên chậm lại.
-  Bay ra khỏi vùng chiến thì tự quay lại; sát đất hiện **KÉO LÊN!**, chạm đất là rơi máy bay.
-- Tên lửa: giữ địch trong vòng ngắm (18°, gần hơn 2,6 km) 0,8 giây là khoá (khung đỏ), 2 quả, nạp lại 5 giây. Từ đợt 3,
-  địch bắn tên lửa đuổi theo: nghe bíp dồn, thấy **TÊN LỬA!** thì thả mồi nhiệt (3 lần, hồi lại 8 giây) và lượn gắt.
-- Địch đuổi theo, đón đầu, né đất, lượn tránh; mức Dễ / Vừa / Khó đổi độ bẻ lái, độ chính xác, máu và sức sát thương.
+- Mức **Dễ** (mặc định): địch lượn chậm, bắn kém, không có tên lửa. **Vừa**: địch có tên lửa từ đợt 4. **Khó**: từ
+  đợt 3, địch lượn và bắn tốt hơn. Nghe bíp dồn, thấy **TÊN LỬA!** thì thả mồi nhiệt (3 lần, hồi lại 8 giây) và lượn gắt.
   3 mạng, rơi máy bay thì 3 giây sau bay tiếp.
 - Màn hình có vòng ngắm, khung địch và mũi tên chỉ địch ngoài màn hình, tốc độ, độ cao, radar.
 - Bàn phím: `W`/`S` chúc/ngóc, `A`/`D` lượn, `Q`/`E` bẻ lái, `Shift` tăng tốc, `Space` bắn, `F` tên lửa, `C` mồi

@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Tilt Pad – điện thoại</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"></script>
@@ -12,6 +12,9 @@
 <body class="pad">
 <style>
   [hidden] { display: none !important; }   /* style.css đặt display cho #live, phải ép ẩn */
+  /* Không cho phóng to: chạm hai lần liền (bấm nút nhanh) hay bị trình duyệt hiểu là zoom. */
+  html, body { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
+  button, .zone { touch-action: none; -webkit-tap-highlight-color: transparent; }
   .top h1 { white-space: nowrap; }
   #games { display: flex; flex-direction: column; gap: .6rem; }
   #games button { display: flex; flex-direction: column; align-items: flex-start; text-align: left; background: var(--surface);
@@ -131,6 +134,22 @@
   </div>
 </div>
 
+<script>
+// Chặn phóng to trên iPhone (Safari bỏ qua user-scalable=no): chụm hai ngón, và chạm hai lần liền.
+(() => {
+  for (const ev of ["gesturestart", "gesturechange", "gestureend"]) document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
+  document.addEventListener("touchmove", (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+  let lastTouchEnd = 0;
+  document.addEventListener("touchend", (e) => {
+    const now = Date.now();
+    // Chỉ chặn khi chạm vào nền trang; nút đã có touch-action nên không zoom, chặn ở nút sẽ mất cú bấm thứ hai.
+    const onControl = e.target.closest && e.target.closest("button, input, a, .zone");
+    if (now - lastTouchEnd < 350 && !onControl) e.preventDefault();
+    lastTouchEnd = now;
+  }, { passive: false });
+  document.addEventListener("dblclick", (e) => e.preventDefault(), { passive: false });
+})();
+</script>
 <script>
 (() => {
 "use strict";

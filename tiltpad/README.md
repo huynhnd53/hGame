@@ -10,6 +10,7 @@ từ đó chọn game trên máy tính hoặc ngay trên điện thoại. Đổi
 | `pickleball.html` | Pickleball góc nhìn thứ ba: điện thoại là vợt |
 | `pickleball-fp.html` | Pickleball góc nhìn thứ nhất: vợt xoay theo tay, nhận động tác vụt, smash, dink |
 | `motion.html` | Kiểm tra cử động vợt: vợt có theo đúng tay, máy nhận đúng động tác không |
+| `fighter.html` | Không chiến: lái máy bay chiến đấu, điện thoại cầm ngang là cần lái |
 | `cube.html` | Khối 3D (hình điện thoại) xoay theo điện thoại |
 | `check.html` | Kiểm tra kết nối |
 
@@ -139,6 +140,26 @@ không, dùng đúng `paddle.js` của game:
   và tìm góc đánh dùng chung một hàm bay (`fly`: trọng lực + xoáy + lực cản) nên vẫn khớp tuyệt đối.
 - Bàn phím: `Space`/chuột vụt, `C` smash (chuột phải), `Z` dink (Shift + chuột), `X` lốp, `V` đánh thẳng.
 
+## Game: Không chiến (`fighter.html`)
+
+https://huynhnd53.github.io/hGame/tiltpad/fighter.html – lái máy bay chiến đấu qua 5 đợt máy bay địch (3 → 7 chiếc) trên
+vùng núi, hồ và mây (`fighter.js`).
+
+- **Điện thoại cầm ngang** bằng hai tay là cần lái. Bấm **CĂN GIỮA** để lấy tư thế đang cầm làm gốc; **nghiêng
+  trái/phải** để lượn, **chúc mép trên xuống** để bổ nhào, **ngóc lên** để kéo lên (nghiêng 3° đầu không tính, khoảng 28°
+  chúc/ngóc và 35° nghiêng là hết cần). Trang điện thoại tự xoay theo trọng lực nên khoá xoay màn hình vẫn dùng được.
+- Nút trên điện thoại: **BẮN** (giữ), **TÊN LỬA**, **MỒI NHIỆT**, **TĂNG TỐC** (giữ), **GÓC NHÌN** (sau máy bay /
+  buồng lái). Điện thoại hiện máu, số tên lửa, mồi nhiệt, trạng thái khoá mục tiêu và cảnh báo, và rung khi trúng đạn.
+- Bay kiểu arcade: thả tay thì máy bay tự cân cánh, nghiêng cánh thì tự lượn vòng; bổ nhào nhanh hơn, kéo lên chậm lại.
+  Bay ra khỏi vùng chiến thì tự quay lại; sát đất hiện **KÉO LÊN!**, chạm đất là rơi máy bay.
+- Tên lửa: giữ địch trong vòng ngắm (18°, gần hơn 2,6 km) 0,8 giây là khoá (khung đỏ), 2 quả, nạp lại 5 giây. Từ đợt 3,
+  địch bắn tên lửa đuổi theo: nghe bíp dồn, thấy **TÊN LỬA!** thì thả mồi nhiệt (3 lần, hồi lại 8 giây) và lượn gắt.
+- Địch đuổi theo, đón đầu, né đất, lượn tránh; mức Dễ / Vừa / Khó đổi độ bẻ lái, độ chính xác, máu và sức sát thương.
+  3 mạng, rơi máy bay thì 3 giây sau bay tiếp.
+- Màn hình có vòng ngắm, khung địch và mũi tên chỉ địch ngoài màn hình, tốc độ, độ cao, radar.
+- Bàn phím: `W`/`S` chúc/ngóc, `A`/`D` lượn, `Q`/`E` bẻ lái, `Shift` tăng tốc, `Space` bắn, `F` tên lửa, `C` mồi
+  nhiệt, `V` đổi góc nhìn.
+
 ## Vgang Online: điện thoại làm tay lái (`pad.html?game=vgang`)
 
 Vgang Online (`../vgang-online/`, nút *Điện thoại*) dùng `link.js` này với `game: "vgang"`. Trang điện thoại chuyển
@@ -205,13 +226,15 @@ hệ trục điện thoại: X sang phải, Y lên đỉnh máy, Z chĩa ra kh�
 | pad → máy tính   | `{t:"reset"}`               | lấy tư thế hiện tại làm gốc              |
 | máy tính → pad   | `{t:"closed"}`              | màn hình máy tính đã đóng                 |
 | máy tính → pad   | `{t:"buzz", ms}`            | rung điện thoại (chém trúng, đánh trúng bóng, được điểm) |
-| máy tính → pad   | `{t:"game", game}`          | đang mở game nào (`hub`, `fruit`, `pickle`, `cube`) |
+| máy tính → pad   | `{t:"game", game}`          | đang mở game nào (`hub`, `fruit`, `pickle`, `picklefp`, `motion`, `fighter`, `cube`, `vgang`) |
 | máy tính → pad   | `{t:"switch", game}`        | sắp chuyển sang game khác, chờ rồi tự nối lại |
 | pad → máy tính   | `{t:"pick", game}`          | chọn game từ điện thoại |
 | pad → máy tính   | `{t:"drive", s, th, br, lift, ts}` | Vgang: lái (-1…1), ga, phanh, bốc đầu |
 | pad → máy tính   | `{t:"ready", on}`           | Vgang: điện thoại đã nằm ngang và cân bằng (hoặc thôi) |
 | pad → máy tính   | `{t:"act", a}`              | Vgang: còi, xi nhan, đèn, đề máy, góc nhìn |
 | máy tính → pad   | `{t:"hud", kmh, engine, light, signal}` | Vgang: tốc độ và trạng thái để hiện trên điện thoại |
+| pad → máy tính   | `{t:"btn", b, on}`          | Không chiến: nút `gun`, `boost` (giữ/thả), `missile`, `flare`, `view`, `start` |
+| máy tính → pad   | `{t:"hud", hp, ms, fl, lock, warn, state}` | Không chiến: máu, tên lửa, mồi nhiệt, khoá mục tiêu, cảnh báo |
 
 Qua đường trung gian, các tin trên được bọc trong `{p: mã điện thoại, k: "msg", m: tin}`; ngoài ra có `knock`/`here`,
 `hello`/`welcome`, `ping` và `bye` (điện thoại đóng trang; máy chủ MQTT cũng tự gửi khi điện thoại rớt mạng).

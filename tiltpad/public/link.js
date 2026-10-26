@@ -10,7 +10,7 @@
 
 const PREFIX = "hgame-tiltpad-";
 // Các trang dùng chung một phòng: chuyển game thì máy tính giữ mã cũ (?room=), điện thoại tự nối lại.
-const GAMES = { hub: "index.html", fruit: "fruit.html", pickle: "pickleball.html", picklefp: "pickleball-fp.html", motion: "motion.html", cube: "cube.html", vgang: "../vgang-online/" };
+const GAMES = { hub: "index.html", fruit: "fruit.html", pickle: "pickleball.html", picklefp: "pickleball-fp.html", motion: "motion.html", fighter: "fighter.html", cube: "cube.html", vgang: "../vgang-online/" };
 // Đường dẫn trong GAMES tính từ thư mục chứa link.js (trang Vgang nằm ở thư mục khác cũng dùng file này).
 const LINK_BASE = (document.currentScript && document.currentScript.src) || location.href;
 const ROOM_KEY = "tiltpad.room";               // tránh trùng ID với app khác trên máy chủ PeerJS chung

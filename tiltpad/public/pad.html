@@ -53,6 +53,26 @@
   #lvlDot.ok { background: #7ff0b8; }
   #levelText { font-weight: 800; font-variant-numeric: tabular-nums; }
   .rotate-icon { width: 90px; height: 90px; }
+  /* Cần lái máy bay (fighter.html): bày ngang như tay cầm chơi game. */
+  #fly { position: fixed; inset: 0; background: #0b1422; color: #e9f2ff; z-index: 10; overflow: hidden; }
+  #flyRot { position: absolute; left: 50%; top: 50%; width: 100vw; height: 100vh; transform: translate(-50%, -50%);
+    display: grid; grid-template-rows: auto auto 1fr; padding: max(8px, env(safe-area-inset-top)) 10px 10px; gap: 8px; }
+  #flyRot.rot { width: 100vh; height: 100vw; }
+  .ftop { display: flex; gap: 6px; align-items: center; overflow-x: auto; }
+  .ftop button { flex: none; border: 2px solid #2b3a55; border-radius: 12px; padding: .35rem .7rem; font-weight: 800; color: #e9f2ff; }
+  .ftop button.on { background: #ffc857; color: #1C1F4A; border-color: #ffc857; }
+  .fstat { display: flex; gap: .8rem; align-items: center; font-weight: 800; font-size: .95rem; flex-wrap: wrap; }
+  .fstat .hp { flex: 1; min-width: 120px; height: 12px; border-radius: 999px; background: #1f2a40; overflow: hidden; }
+  .fstat .hp i { display: block; height: 100%; width: 100%; background: #7ff0b8; transition: width .2s; }
+  #fWarn { color: #ff5a4a; }
+  .fmain { display: grid; grid-template-columns: 1fr 1.6fr; gap: 10px; min-height: 0; }
+  .fleft { display: grid; grid-template-rows: 1fr 1fr; gap: 10px; }
+  .fbtn { border-radius: 20px; font-weight: 800; font-size: 1.3rem; letter-spacing: .05em; color: #fff; border: 3px solid transparent;
+    touch-action: none; user-select: none; -webkit-user-select: none; display: grid; place-items: center; }
+  #fMissile { background: #6b3b14; } #fMissile.ready { background: #c4651d; } #fMissile.locked { background: #e2463c; border-color: #ffd23f; }
+  #fFlare { background: #4a3d10; } #fFlare.ready { background: #9a7a12; }
+  #fGun { background: #1f4a7a; font-size: 1.8rem; } #fGun.on { background: #2f6fff; border-color: #a9c8ff; }
+  .fbtn small { display: block; font-size: .8rem; opacity: .85; font-weight: 700; }
 </style>
 <div>
   <div class="top">
@@ -76,6 +96,7 @@
     <button data-g="fruit"><b>Chém hoa quả</b><span>Điện thoại là thanh kiếm, vung qua quả để chém.</span></button>
     <button data-g="pickle"><b>Pickleball</b><span>Điện thoại là cây vợt, vung đúng lúc để đánh.</span></button>
     <button data-g="picklefp"><b>Pickleball góc nhìn thứ nhất</b><span>Vợt trên màn hình xoay theo tay: vụt, smash, dink.</span></button>
+    <button data-g="fighter"><b>Không chiến</b><span>Lái máy bay chiến đấu: nghiêng máy để lái, nút để bắn.</span></button>
     <button data-g="motion"><b>Kiểm tra cử động vợt</b><span>Xem vợt có theo đúng tay và máy nhận đúng động tác không.</span></button>
     <button data-g="cube"><b>Khối 3D</b><span>Xoay điện thoại, khối trên màn hình xoay theo.</span></button>
   </div>
@@ -134,6 +155,29 @@
   </div>
 </div>
 
+<div id="fly" hidden>
+  <div id="flyRot">
+    <div class="ftop">
+      <button id="fHub" aria-label="Chọn game khác">☰</button>
+      <button id="fCenter">CĂN GIỮA</button>
+      <button id="fBoost">TĂNG TỐC</button>
+      <button id="fView">GÓC NHÌN</button>
+      <button id="fStart" hidden>CẤT CÁNH</button>
+    </div>
+    <div class="fstat">
+      <span>Máu</span><span class="hp"><i id="fHp"></i></span>
+      <span id="fMs">Tên lửa 2</span><span id="fFl">Mồi nhiệt 3</span><span id="fLock"></span><span id="fWarn"></span>
+    </div>
+    <div class="fmain">
+      <div class="fleft">
+        <div class="fbtn" id="fMissile">TÊN LỬA<small id="fMsSub">khoá rồi bấm</small></div>
+        <div class="fbtn" id="fFlare">MỒI NHIỆT<small>né tên lửa</small></div>
+      </div>
+      <div class="fbtn" id="fGun">BẮN<small>giữ để bắn · nghiêng máy để lái</small></div>
+    </div>
+  </div>
+</div>
+
 <script>
 // Chặn phóng to trên iPhone (Safari bỏ qua user-scalable=no): chụm hai ngón, và chạm hai lần liền.
 (() => {
@@ -168,6 +212,7 @@ const TEXTS = {
   fruit: { title: "Thanh kiếm", hint: "Cầm như điều khiển TV, đầu máy chĩa vào màn hình. Vung nhanh qua quả để chém.",
     reset: "CĂN GIỮA", resetHint: "Chĩa đầu máy vào giữa màn hình máy tính rồi bấm." },
   vgang: { title: "Tay lái", hint: "" },
+  fighter: { title: "Cần lái", hint: "" },
   motion: { title: "Kiểm tra cử động", hint: "Cầm như cán vợt và vung thử: máy tính hiện vợt theo tay và động tác nhận được.",
     reset: "CĂN GIỮA", resetHint: "Chĩa đầu máy vào màn hình máy tính rồi bấm." },
   picklefp: { title: "Vợt pickleball", hint: "Cầm như cán vợt. Hạ vợt rồi vụt lên, giơ cao đập xuống để smash, đẩy nhẹ để dink.",
@@ -191,6 +236,8 @@ function layout() {
   $("live").hidden = !joined || game === "hub" || game === "vgang";
   $("controls").hidden = !joined || game === "hub" || game === "vgang";
   $("drive").hidden = !joined || game !== "vgang";
+  $("fly").hidden = !joined || game !== "fighter";
+  if (game === "fighter") { $("live").hidden = true; $("controls").hidden = true; }
   if (game !== "vgang" || !joined) setReady(false);
 }
 
@@ -238,7 +285,7 @@ function connect() {
     onMessage(msg) {
       if (msg.t === "buzz" && navigator.vibrate) navigator.vibrate(Math.min(400, Number(msg.ms) || 30));
       if (msg.t === "game") applyGame(msg.game);
-      if (msg.t === "hud") showHud(msg);
+      if (msg.t === "hud") (game === "fighter" ? showFlyHud : showHud)(msg);
       if (msg.t === "switch") { rejoinUntil = Date.now() + 30000; applyGame(msg.game); $("padState").textContent = "Đang chuyển game…"; }
     },
     onError(text) {
@@ -270,6 +317,7 @@ function onOrient(e){
   $("rb").textContent = e.beta.toFixed(0) + "°";
   $("rg").textContent = e.gamma.toFixed(0) + "°";
   if (game === "vgang") { driveOrient(e); return; }
+  if (game === "fighter") flyOrient(e);
   if (!joined || game === "hub") return;
   const now = performance.now();
   if (now - lastSend < 16) return;              // ~60 lần/giây
@@ -397,6 +445,47 @@ async function keepAwake() {
   try { if (navigator.wakeLock && !wakeLock) { wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", () => { wakeLock = null; }); } } catch {}
 }
 document.addEventListener("visibilitychange", () => { if (!document.hidden && joined) keepAwake(); });
+
+// ---------- Cần lái máy bay (fighter) ----------
+// Cầm ngang như tay cầm chơi game; máy tính đọc góc nghiêng từ tin "orient". Giao diện bày ngang; máy khoá xoay màn hình
+// thì đoán chiều ngang theo trọng lực (như tay lái Vgang) và tự xoay giao diện.
+let flySide = 0;
+function flyOrient(e) {
+  const upv = upInDevice(e), a = uiAngle();
+  if (a === 90) flySide = 1; else if (a === -90) flySide = -1;
+  else if (Math.abs(upv.x) > 0.5 && Math.abs(upv.x) > Math.abs(upv.y)) flySide = Math.sign(upv.x);
+  const rot = a === 0 && flySide ? flySide * 90 : 0;
+  const r = $("flyRot");
+  r.classList.toggle("rot", rot !== 0);
+  r.style.transform = "translate(-50%, -50%)" + (rot ? ` rotate(${rot}deg)` : "");
+}
+function flyBtn(id, b, hold) {
+  const el = $(id);
+  const send = (on) => { if (joined) link.send({ t: "btn", b, on }); };
+  el.addEventListener("pointerdown", (e) => { e.preventDefault(); el.classList.add("on"); send(true); if (navigator.vibrate) navigator.vibrate(hold ? 10 : 25); });
+  const up = () => { if (!el.classList.contains("on")) return; el.classList.remove("on"); if (hold) send(false); };
+  for (const ev of ["pointerup", "pointercancel", "pointerleave"]) el.addEventListener(ev, up);
+}
+flyBtn("fGun", "gun", true); flyBtn("fBoost", "boost", true);
+flyBtn("fMissile", "missile", false); flyBtn("fFlare", "flare", false);
+flyBtn("fView", "view", false); flyBtn("fStart", "start", false);
+$("fCenter").onclick = () => { if (joined) { link.send({ t: "reset" }); if (navigator.vibrate) navigator.vibrate(30); } };
+$("fHub").onclick = () => { if (joined) link.send({ t: "pick", game: "hub" }); };
+function showFlyHud(m) {
+  const hp = Math.max(0, Number(m.hp) || 0);
+  $("fHp").style.width = hp + "%";
+  $("fHp").style.background = hp > 50 ? "#7ff0b8" : hp > 25 ? "#ffd23f" : "#ff4a3a";
+  $("fMs").textContent = "Tên lửa " + (m.ms ?? 0);
+  $("fFl").textContent = "Mồi nhiệt " + (m.fl ?? 0);
+  const lock = Number(m.lock) || 0;
+  $("fLock").textContent = lock >= 1 ? "◆ ĐÃ KHOÁ" : lock > 0 ? "◇ đang khoá…" : "";
+  $("fMissile").classList.toggle("ready", (m.ms ?? 0) > 0);
+  $("fMissile").classList.toggle("locked", lock >= 1 && (m.ms ?? 0) > 0);
+  $("fMsSub").textContent = lock >= 1 ? "BẮN NGAY!" : "khoá rồi bấm";
+  $("fFlare").classList.toggle("ready", (m.fl ?? 0) > 0);
+  $("fWarn").textContent = m.warn === "missile" ? "⚠ TÊN LỬA!" : m.warn === "low" ? "⚠ KÉO LÊN!" : "";
+  $("fStart").hidden = m.state === "fight";
+}
 
 if (params.has("debug")) window.__pad = { get game() { return game; }, get joined() { return joined; }, drv, driveOrient };
 })();

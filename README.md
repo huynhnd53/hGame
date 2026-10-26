@@ -10,6 +10,7 @@ Repo gom các dự án web, mỗi dự án nằm trong một thư mục riêng, 
 | [`tiltpad/`](tiltpad/) | Chém hoa quả: điện thoại làm thanh kiếm, dùng chung kết nối của Tilt Pad | https://huynhnd53.github.io/hGame/tiltpad/fruit.html |
 | [`tiltpad/`](tiltpad/) | Pickleball: góc nhìn thứ ba, điện thoại làm vợt | https://huynhnd53.github.io/hGame/tiltpad/pickleball.html |
 | [`tiltpad/`](tiltpad/) | Pickleball góc nhìn thứ nhất: vợt xoay theo tay, nhận động tác vụt, smash, dink | https://huynhnd53.github.io/hGame/tiltpad/pickleball-fp.html |
+| [`tiltpad/`](tiltpad/) | Không chiến: lái máy bay chiến đấu, điện thoại cầm ngang là cần lái | https://huynhnd53.github.io/hGame/tiltpad/fighter.html |
 
 Trang chào ở gốc (`index.html`) giới thiệu và cho chọn các game chơi bằng điện thoại; Vgang Online và Dựng khu thật nằm ở mục "Dự án khác" cuối trang: https://huynhnd53.github.io/hGame/
 
